@@ -118,6 +118,9 @@
         .btn-pdf { background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
         .btn-pdf:hover { background: #c0392b; }
 
+        .btn-pago { background: #27ae60; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-weight: 600; cursor: pointer; font-size: 0.8rem; }
+        .btn-pago:hover { background: #219653; }
+
         /* Tabelas */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 12px; font-size: 0.85rem; color: #718096; background: #f7fafc; border-bottom: 1px solid #e2e8f0; }
@@ -257,7 +260,7 @@
                 <!-- PAINEL DE CONTAS DO DIA & VENCIMENTOS (ATRASO, HOJE E PRÓXIMOS 10 DIAS) -->
                 <div class="card" style="border-left: 5px solid #e53e3e;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                        <h3 style="margin-bottom: 0;">🚨 Agenda de Pagamentos (Atraso, Hoje e Próximos 10 Dias)</h3>
+                        <h3 style="margin-bottom: 0;">🚨 Agenda de Pagamentos Pendentes (Atraso, Hoje e Próximos 10 Dias)</h3>
                         <span id="total-contas-agenda" style="font-size: 1.1rem; font-weight: bold; color: #e53e3e;">Total: R$ 0,00</span>
                     </div>
 
@@ -269,6 +272,7 @@
                                     <th>Data Vencimento</th>
                                     <th>Categoria</th>
                                     <th>Valor</th>
+                                    <th>Ação</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -747,7 +751,8 @@
                             data: dataLancamento,
                             categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
                             tipo, 
-                            valor: valorInformado
+                            valor: valorInformado,
+                            pago: false
                         });
                         
                         localStorage.setItem(chaveMes, JSON.stringify(dadosMes));
@@ -773,7 +778,8 @@
                 data: dataLancamento, 
                 categoria, 
                 tipo, 
-                valor: valorInformado 
+                valor: valorInformado,
+                pago: false
             });
             localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
             
@@ -837,6 +843,18 @@
             atualizarDashboard();
         }
 
+        function marcarComoPago(indexOriginal) {
+            let mesRef = document.getElementById('mes-referencia').value;
+            let chave = obterChave(mesRef);
+            let dados = JSON.parse(localStorage.getItem(chave)) || [];
+
+            if (dados[indexOriginal]) {
+                dados[indexOriginal].pago = true;
+                localStorage.setItem(chave, JSON.stringify(dados));
+                atualizarDashboard();
+            }
+        }
+
         function atualizarDashboard() {
             let mesRef = document.getElementById('mes-referencia').value;
             let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
@@ -854,7 +872,7 @@
 
                 tbody.innerHTML += `<tr>
                     <td>${dataFormatada}</td>
-                    <td>${item.categoria}</td>
+                    <td>${item.categoria} ${item.pago ? '<span style="color:#27ae60; font-size:0.75rem; font-weight:bold;">(PAGO)</span>' : ''}</td>
                     <td><span style="color: ${item.tipo === 'entrada' ? '#27ae60' : '#e74c3c'}; font-weight:600;">${item.tipo.toUpperCase()}</span></td>
                     <td>R$ ${item.valor.toFixed(2)}</td>
                     <td>
@@ -887,8 +905,8 @@
             let totalAgenda = 0;
             let encontrou = false;
 
-            dados.forEach(item => {
-                if (item.tipo === 'saida' && item.data) {
+            dados.forEach((item, index) => {
+                if (item.tipo === 'saida' && item.data && !item.pago) {
                     let itemData = new Date(item.data + 'T00:00:00');
                     let statusBadge = "";
 
@@ -910,13 +928,14 @@
                             <td><strong>${dataFormatada}</strong></td>
                             <td>${item.categoria}</td>
                             <td style="color: #e53e3e; font-weight: 600;">R$ ${item.valor.toFixed(2)}</td>
+                            <td><button class="btn-pago" onclick="marcarComoPago(${index})">✓ Marcar Pago</button></td>
                         </tr>`;
                     }
                 }
             });
 
             if (!encontrou) {
-                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#a0aec0;">Nenhuma conta em atraso, vencendo hoje ou nos próximos 10 dias.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#a0aec0;">Nenhuma conta pendente em atraso, vencendo hoje ou nos próximos 10 dias.</td></tr>`;
             }
 
             document.getElementById('total-contas-agenda').innerText = "Total: R$ " + totalAgenda.toFixed(2);
