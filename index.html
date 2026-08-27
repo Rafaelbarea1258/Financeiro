@@ -225,6 +225,7 @@
             <li><a onclick="switchPage('pag-graficos', this)">📈 Gráficos</a></li>
             <li><a onclick="switchPage('pag-simulacao', this)">💡 Simulação / Investimento</a></li>
             <li><a onclick="switchPage('pag-relatorios', this)">📄 Relatórios</a></li>
+            <li><a onclick="switchPage('pag-configuracoes', this)">⚙️ Configurações</a></li>
         </ul>
     </div>
 
@@ -267,33 +268,7 @@
 
                         <label>Categoria / Plano de Contas</label>
                         <select id="categoria">
-                            <optgroup label="Entradas">
-                                <option value="Salário Esposo">Salário Esposo</option>
-                                <option value="Salário Esposa">Salário Esposa</option>
-                                <option value="Renda Extra">Renda Extra</option>
-                            </optgroup>
-                            <optgroup label="Despesas">
-                                <option value="Mercado">Mercado</option>
-                                <option value="Padaria">Padaria</option>
-                                <option value="Lanche">Lanche</option>
-                                <option value="Pizzaria">Pizzaria</option>
-                                <option value="Dízimos e Ofertas">Dízimos e Ofertas</option>
-                                <option value="Materiais de Construção">Materiais de Construção</option>
-                                <option value="Manutenção">Manutenção</option>
-                                <option value="Construção">Construção</option>
-                                <option value="Água">Água</option>
-                                <option value="Gás">Gás</option>
-                                <option value="Ração para Animais">Ração para Animais</option>
-                                <option value="Manutenção de Carro">Manutenção de Carro</option>
-                                <option value="Combustível">Combustível</option>
-                                <option value="IPVA">IPVA</option>
-                                <option value="Empréstimos">Empréstimos</option>
-                                <option value="Cartão de Crédito">Cartão de Crédito</option>
-                                <option value="Luz">Luz</option>
-                                <option value="Internet">Internet</option>
-                                <option value="CRESS Sara Assistente Social">CRESS Sara Assistente Social</option>
-                                <option value="MEI Negociação Rafael">MEI Negociação Rafael</option>
-                            </optgroup>
+                            <!-- Opções renderizadas dinamicamente via JS -->
                         </select>
 
                         <label>Valor da Parcela (R$)</label>
@@ -468,12 +443,153 @@
                 </div>
             </div>
 
+            <!-- ================= 5. PÁGINA: CONFIGURAÇÕES / CATEGORIAS ================= -->
+            <div id="pag-configuracoes" class="page">
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Cadastrar Nova Categoria</h3>
+                        <label>Tipo de Categoria</label>
+                        <select id="cfg-tipo">
+                            <option value="entrada">Entrada</option>
+                            <option value="despesa" selected>Despesa</option>
+                        </select>
+
+                        <label>Nome da Categoria</label>
+                        <input type="text" id="cfg-nome" placeholder="Ex: Farmácia, Petshop, Assinaturas...">
+
+                        <button class="btn-primary" onclick="adicionarCategoria()">Salvar Categoria</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>Categorias Personalizadas Cadastradas</h3>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            <table id="tabela-categorias-custom">
+                                <thead>
+                                    <tr>
+                                        <th>Nome</th>
+                                        <th>Tipo</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
     <script>
         let currentChart = null;
         let sixMonthsChart = null;
+
+        // CATEGORIAS PADRÃO
+        const categoriasPadrao = {
+            entradas: ["Salário Esposo", "Salário Esposa", "Renda Extra"],
+            despesas: [
+                "Mercado", "Padaria", "Lanche", "Pizzaria", "Dízimos e Ofertas",
+                "Materiais de Construção", "Manutenção", "Construção", "Água", "Gás",
+                "Ração para Animais", "Manutenção de Carro", "Combustível", "IPVA",
+                "Empréstimos", "Cartão de Crédito", "Luz", "Internet",
+                "CRESS Sara Assistente Social", "MEI Negociação Rafael"
+            ]
+        };
+
+        function obterCategorias() {
+            let custom = JSON.parse(localStorage.getItem('categorias_custom')) || { entradas: [], despesas: [] };
+            return {
+                entradas: [...categoriasPadrao.entradas, ...custom.entradas],
+                despesas: [...categoriasPadrao.despesas, ...custom.despesas]
+            };
+        }
+
+        function renderizarOpcoesCategorias() {
+            let catSelect = document.getElementById('categoria');
+            let lista = obterCategorias();
+
+            let html = `<optgroup label="Entradas">`;
+            lista.entradas.forEach(c => {
+                html += `<option value="${c}">${c}</option>`;
+            });
+            html += `</optgroup><optgroup label="Despesas">`;
+            lista.despesas.forEach(c => {
+                html += `<option value="${c}">${c}</option>`;
+            });
+            html += `</optgroup>`;
+
+            catSelect.innerHTML = html;
+        }
+
+        function adicionarCategoria() {
+            let tipo = document.getElementById('cfg-tipo').value;
+            let nome = document.getElementById('cfg-nome').value.trim();
+
+            if (!nome) return alert("Digite o nome da categoria!");
+
+            let custom = JSON.parse(localStorage.getItem('categorias_custom')) || { entradas: [], despesas: [] };
+
+            if (tipo === 'entrada') {
+                if (obterCategorias().entradas.includes(nome)) return alert("Esta categoria já existe!");
+                custom.entradas.push(nome);
+            } else {
+                if (obterCategorias().despesas.includes(nome)) return alert("Esta categoria já existe!");
+                custom.despesas.push(nome);
+            }
+
+            localStorage.setItem('categorias_custom', JSON.stringify(custom));
+            document.getElementById('cfg-nome').value = "";
+            renderizarOpcoesCategorias();
+            renderizarTabelaCategoriasCustom();
+            alert("Categoria cadastrada com sucesso!");
+        }
+
+        function excluirCategoriaCustom(tipo, nome) {
+            if (!confirm(`Deseja remover a categoria "${nome}"?`)) return;
+
+            let custom = JSON.parse(localStorage.getItem('categorias_custom')) || { entradas: [], despesas: [] };
+
+            if (tipo === 'entrada') {
+                custom.entradas = custom.entradas.filter(c => c !== nome);
+            } else {
+                custom.despesas = custom.despesas.filter(c => c !== nome);
+            }
+
+            localStorage.setItem('categorias_custom', JSON.stringify(custom));
+            renderizarOpcoesCategorias();
+            renderizarTabelaCategoriasCustom();
+        }
+
+        function renderizarTabelaCategoriasCustom() {
+            let custom = JSON.parse(localStorage.getItem('categorias_custom')) || { entradas: [], despesas: [] };
+            let tbody = document.querySelector("#tabela-categorias-custom tbody");
+            tbody.innerHTML = "";
+
+            let vazia = true;
+
+            custom.entradas.forEach(c => {
+                vazia = false;
+                tbody.innerHTML += `<tr>
+                    <td><strong>${c}</strong></td>
+                    <td><span style="color:#27ae60; font-weight:600;">Entrada</span></td>
+                    <td><button onclick="excluirCategoriaCustom('entrada', '${c}')" style="background:#e53e3e; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">X</button></td>
+                </tr>`;
+            });
+
+            custom.despesas.forEach(c => {
+                vazia = false;
+                tbody.innerHTML += `<tr>
+                    <td><strong>${c}</strong></td>
+                    <td><span style="color:#e74c3c; font-weight:600;">Despesa</span></td>
+                    <td><button onclick="excluirCategoriaCustom('despesa', '${c}')" style="background:#e53e3e; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">X</button></td>
+                </tr>`;
+            });
+
+            if (vazia) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#a0aec0;">Nenhuma categoria personalizada criada ainda.</td></tr>`;
+            }
+        }
 
         // LÓGICA DE AUTENTICAÇÃO
         function verificarSessao() {
@@ -526,6 +642,8 @@
             } else if (pageId === 'pag-relatorios') {
                 document.getElementById('mes-relatorio').value = document.getElementById('mes-referencia').value;
                 gerarRelatorio();
+            } else if (pageId === 'pag-configuracoes') {
+                renderizarTabelaCategoriasCustom();
             }
         }
 
@@ -901,6 +1019,7 @@
         document.getElementById('mes-referencia').value = hoje.slice(0,7);
         document.getElementById('data-lancamento').value = hoje;
         
+        renderizarOpcoesCategorias();
         verificarSessao();
         atualizarDashboard();
     </script>
