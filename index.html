@@ -131,6 +131,12 @@
 
         .chart-container { position: relative; height: 300px; width: 100%; display: flex; justify-content: center; align-items: center; }
 
+        /* Estilos da Simulação */
+        .status-banner { padding: 15px 20px; border-radius: 8px; font-weight: bold; font-size: 1.05rem; margin-top: 15px; text-align: center; }
+        .banner-sucesso { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
+        .banner-atencao { background: #feebc8; color: #744210; border: 1px solid #fbd38d; }
+        .banner-perigo { background: #fed7d7; color: #742a2a; border: 1px solid #feb2b2; }
+
         /* ================= RESPONSIVIDADE PARA CELULARES E TABLETS ================= */
         @media(max-width: 768px) {
             body {
@@ -217,6 +223,7 @@
         <ul class="sidebar-menu">
             <li><a class="active" onclick="switchPage('pag-lancamentos', this)">📊 Lançamentos</a></li>
             <li><a onclick="switchPage('pag-graficos', this)">📈 Gráficos</a></li>
+            <li><a onclick="switchPage('pag-simulacao', this)">💡 Simulação / Investimento</a></li>
             <li><a onclick="switchPage('pag-relatorios', this)">📄 Relatórios</a></li>
         </ul>
     </div>
@@ -374,7 +381,62 @@
                 </div>
             </div>
 
-            <!-- ================= 3. PÁGINA: RELATÓRIOS ================= -->
+            <!-- ================= 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO ================= -->
+            <div id="pag-simulacao" class="page">
+                <div class="card">
+                    <h3>Simulador de Investimentos e Novos Gastos</h3>
+                    <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Use esta ferramenta para simular se uma nova compra ou investimento cabe no seu orçamento mensal.</p>
+
+                    <div class="grid-2">
+                        <!-- Formulário de Simulação -->
+                        <div>
+                            <label>Descrição da Simulação</label>
+                            <input type="text" id="sim-descricao" placeholder="Ex: Curso, Compra de Ferramenta, Viagem...">
+
+                            <label>Valor Total do Investimento/Gasto (R$)</label>
+                            <input type="number" id="sim-valor" placeholder="Ex: 1200.00" oninput="calcularSimulacao()">
+
+                            <label>Condição de Pagamento</label>
+                            <select id="sim-parcelas" onchange="calcularSimulacao()">
+                                <option value="1">À vista (1x)</option>
+                                <option value="2">2x</option>
+                                <option value="3">3x</option>
+                                <option value="4">4x</option>
+                                <option value="5">5x</option>
+                                <option value="6">6x</option>
+                                <option value="7">7x</option>
+                                <option value="8">8x</option>
+                                <option value="9">9x</option>
+                                <option value="10">10x</option>
+                                <option value="11">11x</option>
+                                <option value="12">12x</option>
+                            </select>
+                        </div>
+
+                        <!-- Painel de Resultados da Simulação -->
+                        <div>
+                            <div class="resumo-box">
+                                <span>Saldo Livre Atual (Mês):</span>
+                                <span id="sim-saldo-atual" class="text-green">R$ 0,00</span>
+                            </div>
+                            <div class="resumo-box">
+                                <span>Impacto Mensal Calculado:</span>
+                                <span id="sim-impacto-mensal" class="text-red">R$ 0,00</span>
+                            </div>
+                            <div class="resumo-box" style="background: #ebf8ff; border-color: #bee3f8;">
+                                <span>Saldo Estimado Pós-Gasto:</span>
+                                <span id="sim-saldo-futuro" class="text-blue">R$ 0,00</span>
+                            </div>
+
+                            <div id="sim-status-banner" class="status-banner banner-sucesso" style="display: none;">
+                                Digite um valor para ver o diagnóstico.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= 4. PÁGINA: RELATÓRIOS ================= -->
             <div id="pag-relatorios" class="page">
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
@@ -459,6 +521,8 @@
 
             if (pageId === 'pag-graficos') {
                 atualizarGraficos();
+            } else if (pageId === 'pag-simulacao') {
+                calcularSimulacao();
             } else if (pageId === 'pag-relatorios') {
                 document.getElementById('mes-relatorio').value = document.getElementById('mes-referencia').value;
                 gerarRelatorio();
@@ -657,6 +721,45 @@
             document.getElementById('total-entradas').innerText = "R$ " + entradas.toFixed(2);
             document.getElementById('total-saidas').innerText = "R$ " + saidas.toFixed(2);
             document.getElementById('saldo-final').innerText = "R$ " + (entradas - saidas).toFixed(2);
+        }
+
+        /* LÓGICA DA SIMULAÇÃO DE INVESTIMENTO/GASTO */
+        function calcularSimulacao() {
+            let mesRef = document.getElementById('mes-referencia').value;
+            let dados = JSON.parse(localStorage.getItem(obterChave(mesRef))) || [];
+            let entradas = dados.filter(i => i.tipo === 'entrada').reduce((a, b) => a + b.valor, 0);
+            let saidas = dados.filter(i => i.tipo === 'saida').reduce((a, b) => a + b.valor, 0);
+            let saldoLivreAtual = entradas - saidas;
+
+            let valorTotalSim = parseFloat(document.getElementById('sim-valor').value) || 0;
+            let numParcelasSim = parseInt(document.getElementById('sim-parcelas').value) || 1;
+
+            let impactoMensal = valorTotalSim / numParcelasSim;
+            let saldoFuturo = saldoLivreAtual - impactoMensal;
+
+            document.getElementById('sim-saldo-atual').innerText = "R$ " + saldoLivreAtual.toFixed(2);
+            document.getElementById('sim-impacto-mensal').innerText = "R$ " + impactoMensal.toFixed(2);
+            document.getElementById('sim-saldo-futuro').innerText = "R$ " + saldoFuturo.toFixed(2);
+
+            let banner = document.getElementById('sim-status-banner');
+            banner.style.display = "block";
+
+            if (valorTotalSim <= 0) {
+                banner.className = "status-banner banner-atencao";
+                banner.innerText = "Informe um valor para realizar a simulação.";
+                return;
+            }
+
+            if (saldoFuturo < 0) {
+                banner.className = "status-banner banner-perigo";
+                banner.innerText = `⚠️ ATENÇÃO: Esse investimento deixará seu saldo negativo em R$ ${Math.abs(saldoFuturo).toFixed(2)} por mês. Não recomendado no momento.`;
+            } else if (saldoFuturo < (entradas * 0.1)) {
+                banner.className = "status-banner banner-atencao";
+                banner.innerText = `⚡ CUIDADO: É possível realizar o gasto, mas sua margem de segurança ficará muito baixa (menos de 10% da sua renda).`;
+            } else {
+                banner.className = "status-banner banner-sucesso";
+                banner.innerText = `✅ VIÁVEL: O investimento cabe no seu orçamento! Seu saldo mensal continuará positivo em R$ ${saldoFuturo.toFixed(2)}.`;
+            }
         }
 
         function atualizarGraficos() {
