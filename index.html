@@ -257,7 +257,7 @@
                     </div>
                 </div>
 
-                <!-- PAINEL DE CONTAS DO DIA & VENCIMENTOS (ATRASO, HOJE E PRÓXIMOS 10 DIAS) -->
+                <!-- PAINEL DE CONTAS DO DIA & VENCIMENTOS -->
                 <div class="card" style="border-left: 5px solid #e53e3e;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                         <h3 style="margin-bottom: 0;">🚨 Agenda de Pagamentos Pendentes (Atraso, Hoje e Próximos 10 Dias)</h3>
@@ -369,7 +369,6 @@
             <!-- ================= 2. PÁGINA: GRÁFICOS ================= -->
             <div id="pag-graficos" class="page">
                 <div class="grid-2">
-                    <!-- Gráfico 1: Mês Atual -->
                     <div class="card">
                         <h3>Mês Atual (Entradas vs Saídas)</h3>
                         <div class="chart-container">
@@ -377,7 +376,6 @@
                         </div>
                     </div>
 
-                    <!-- Gráfico 2: Evolução 6 Meses -->
                     <div class="card">
                         <h3>Evolução dos Últimos 6 Meses</h3>
                         <div class="chart-container">
@@ -394,7 +392,6 @@
                     <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Use esta ferramenta para simular se uma nova compra ou investimento cabe no seu orçamento mensal.</p>
 
                     <div class="grid-2">
-                        <!-- Formulário de Simulação -->
                         <div>
                             <label>Descrição da Simulação</label>
                             <input type="text" id="sim-descricao" placeholder="Ex: Curso, Compra de Ferramenta, Viagem...">
@@ -419,7 +416,6 @@
                             </select>
                         </div>
 
-                        <!-- Painel de Resultados da Simulação -->
                         <div>
                             <div class="resumo-box">
                                 <span>Saldo Livre Atual (Mês):</span>
@@ -468,9 +464,7 @@
                         </div>
                     </div>
 
-                    <div id="resultado-relatorio" style="max-height: 400px; overflow-y: auto;">
-                        <!-- Tabela agrupada será injetada aqui -->
-                    </div>
+                    <div id="resultado-relatorio" style="max-height: 400px; overflow-y: auto;"></div>
                 </div>
             </div>
 
@@ -516,7 +510,6 @@
         let currentChart = null;
         let sixMonthsChart = null;
 
-        // CATEGORIAS PADRÃO
         const categoriasPadrao = {
             entradas: ["Salário Esposo", "Salário Esposa", "Renda Extra"],
             despesas: [
@@ -622,7 +615,6 @@
             }
         }
 
-        // LÓGICA DE AUTENTICAÇÃO
         function verificarSessao() {
             let usuarioLogado = localStorage.getItem('usuario_logado');
             let authValida = localStorage.getItem('auth_valida');
@@ -706,6 +698,38 @@
             }
         }
 
+        function atualizarGrupoNoLocalStorage(grupoId, novosDadosGerais) {
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key && key.startsWith("financas_")) {
+                    let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
+                    let alterou = false;
+
+                    dadosMes.forEach(item => {
+                        if (item.grupoId === grupoId) {
+                            alterou = true;
+                            item.valor = novosDadosGerais.valor;
+                            item.tipo = novosDadosGerais.tipo;
+                            
+                            // Preserva o número da parcela (ex: 1/6)
+                            let sufixoParcela = item.categoria.match(/\s\(\d+\/\d+\)$/);
+                            item.categoria = novosDadosGerais.categoria + (sufixoParcela ? sufixoParcela[0] : '');
+
+                            // Atualiza o dia da data mantendo o mês/ano correto daquele registro
+                            if (novosDadosGerais.dia) {
+                                let partes = item.data.split('-');
+                                item.data = `${partes[0]}-${partes[1]}-${novosDadosGerais.dia}`;
+                            }
+                        }
+                    });
+
+                    if (alterou) {
+                        localStorage.setItem(key, JSON.stringify(dadosMes));
+                    }
+                }
+            }
+        }
+
         function adicionarLancamento() {
             let editIndex = document.getElementById('edit-index').value;
             let editGrupoId = document.getElementById('edit-grupo-id').value;
@@ -718,17 +742,32 @@
             if(!valorInformado || isNaN(valorInformado)) return alert("Digite um valor válido!");
 
             let mesDoLancamento = dataLancamento.slice(0, 7);
+            let diaDoLancamento = dataLancamento.slice(8, 10);
 
-            if (editIndex !== "") {
-                let chaveMesOriginal = obterChave();
-                let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
-                
-                if (editGrupoId) {
-                    removerGrupoDoLocalStorage(editGrupoId);
+            // Se for EDICÃO de uma parcela existente
+            if (editIndex !== "" && editGrupoId) {
+                if (confirm("Deseja aplicar estas alterações também em todos os meses futuros deste lançamento?")) {
+                    atualizarGrupoNoLocalStorage(editGrupoId, {
+                        valor: valorInformado,
+                        categoria: categoria,
+                        tipo: tipo,
+                        dia: diaDoLancamento
+                    });
+
+                    resetarFormulario();
+                    atualizarDashboard();
+                    return;
                 } else {
+                    let chaveMesOriginal = obterChave();
+                    let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
                     dados.splice(editIndex, 1);
                     localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
                 }
+            } else if (editIndex !== "") {
+                let chaveMesOriginal = obterChave();
+                let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
+                dados.splice(editIndex, 1);
+                localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
             }
 
             let novoGrupoId = 'grupo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
@@ -737,18 +776,19 @@
                 let qtdParcelas = parseInt(document.getElementById('qtd-parcelas').value) || 1;
 
                 if (qtdParcelas > 1) {
-                    let [anoIni, mesIni] = mesDoLancamento.split('-').map(Number);
+                    let [anoIni, mesIni, diaIni] = dataLancamento.split('-').map(Number);
                     let currAno = anoIni;
                     let currMes = mesIni;
 
                     for (let i = 0; i < qtdParcelas; i++) {
                         let mesStr = `${currAno}-${String(currMes).padStart(2, '0')}`;
+                        let dataFinalParcela = `${mesStr}-${String(diaIni).padStart(2, '0')}`;
                         let chaveMes = "financas_" + mesStr;
                         let dadosMes = JSON.parse(localStorage.getItem(chaveMes)) || [];
                         
                         dadosMes.push({ 
                             grupoId: novoGrupoId,
-                            data: dataLancamento,
+                            data: dataFinalParcela,
                             categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
                             tipo, 
                             valor: valorInformado,
@@ -832,7 +872,7 @@
             let item = dados[index];
 
             if (item && item.grupoId) {
-                if(!confirm("Esta é uma despesa parcelada. Deseja excluir TODAS as parcelas deste grupo em todos os meses?")) return;
+                if(!confirm("Esta é uma despesa parcelada. Deseja excluir esta parcela e TODAS as parcelas associadas em todos os meses?")) return;
                 removerGrupoDoLocalStorage(item.grupoId);
             } else {
                 if(!confirm("Deseja realmente excluir este lançamento?")) return;
@@ -889,7 +929,6 @@
             atualizarAgendaContas();
         }
 
-        /* LÓGICA DA AGENDA DE CONTAS (ATRASO, HOJE E PRÓXIMOS 10 DIAS) */
         function atualizarAgendaContas() {
             let mesRef = document.getElementById('mes-referencia').value;
             let dados = JSON.parse(localStorage.getItem(obterChave(mesRef))) || [];
@@ -941,7 +980,6 @@
             document.getElementById('total-contas-agenda').innerText = "Total: R$ " + totalAgenda.toFixed(2);
         }
 
-        /* LÓGICA DA SIMULAÇÃO DE INVESTIMENTO/GASTO */
         function calcularSimulacao() {
             let mesRef = document.getElementById('mes-referencia').value;
             let dados = JSON.parse(localStorage.getItem(obterChave(mesRef))) || [];
