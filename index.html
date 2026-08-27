@@ -711,11 +711,9 @@
                             item.valor = novosDadosGerais.valor;
                             item.tipo = novosDadosGerais.tipo;
                             
-                            // Preserva o número da parcela (ex: 1/6)
                             let sufixoParcela = item.categoria.match(/\s\(\d+\/\d+\)$/);
                             item.categoria = novosDadosGerais.categoria + (sufixoParcela ? sufixoParcela[0] : '');
 
-                            // Atualiza o dia da data mantendo o mês/ano correto daquele registro
                             if (novosDadosGerais.dia) {
                                 let partes = item.data.split('-');
                                 item.data = `${partes[0]}-${partes[1]}-${novosDadosGerais.dia}`;
@@ -744,7 +742,6 @@
             let mesDoLancamento = dataLancamento.slice(0, 7);
             let diaDoLancamento = dataLancamento.slice(8, 10);
 
-            // Se for EDICÃO de uma parcela existente
             if (editIndex !== "" && editGrupoId) {
                 if (confirm("Deseja aplicar estas alterações também em todos os meses futuros deste lançamento?")) {
                     atualizarGrupoNoLocalStorage(editGrupoId, {
@@ -935,10 +932,18 @@
             let tbody = document.querySelector("#tabela-contas-urgentes tbody");
             tbody.innerHTML = "";
 
-            let hojeStr = new Date().toISOString().slice(0, 10);
-            let hoje = new Date(hojeStr + 'T00:00:00');
+            // Considera a data base baseada no mês selecionado
+            let dataBase = new Date(mesRef + '-01T00:00:00');
+            let hojeReal = new Date();
+            hojeReal.setHours(0, 0, 0, 0);
+
+            // Se o mês selecionado for o mês atual real, usa o dia atual real; caso contrário, usa o dia 1º do mês selecionado
+            let mesRefAnoMes = mesRef;
+            let hojeAnoMes = hojeReal.toISOString().slice(0, 7);
             
-            let limiteDezDias = new Date(hoje);
+            let dataReferenciaCalculo = (mesRefAnoMes === hojeAnoMes) ? hojeReal : dataBase;
+            
+            let limiteDezDias = new Date(dataReferenciaCalculo);
             limiteDezDias.setDate(limiteDezDias.getDate() + 10);
 
             let totalAgenda = 0;
@@ -949,12 +954,15 @@
                     let itemData = new Date(item.data + 'T00:00:00');
                     let statusBadge = "";
 
-                    if (itemData < hoje) {
+                    if (itemData < dataReferenciaCalculo) {
                         statusBadge = `<span class="badge-atraso">EM ATRASO</span>`;
-                    } else if (itemData.getTime() === hoje.getTime()) {
+                    } else if (itemData.getTime() === dataReferenciaCalculo.getTime()) {
                         statusBadge = `<span class="badge-hoje">VENCE HOJE</span>`;
-                    } else if (itemData > hoje && itemData <= limiteDezDias) {
+                    } else if (itemData > dataReferenciaCalculo && itemData <= limiteDezDias) {
                         statusBadge = `<span class="badge-proximo">PRÓXIMOS 10 DIAS</span>`;
+                    } else {
+                        // Exibe todas as pendentes do mês no painel
+                        statusBadge = `<span class="badge-hoje">PENDENTE</span>`;
                     }
 
                     if (statusBadge !== "") {
@@ -974,7 +982,7 @@
             });
 
             if (!encontrou) {
-                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#a0aec0;">Nenhuma conta pendente em atraso, vencendo hoje ou nos próximos 10 dias.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#a0aec0;">Nenhuma conta pendente para este mês.</td></tr>`;
             }
 
             document.getElementById('total-contas-agenda').innerText = "Total: R$ " + totalAgenda.toFixed(2);
