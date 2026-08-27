@@ -250,7 +250,7 @@
                     <div class="card">
                         <h3 id="titulo-form">Novo Lançamento</h3>
                         
-                        <input type="hidden" id="edit-index" value="">
+                        <input type="hidden" id="edit-id" value="">
                         <input type="hidden" id="edit-grupo-id" value="">
 
                         <label>Data do Lançamento</label>
@@ -346,7 +346,7 @@
                 </div>
             </div>
 
-            <!-- 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO (PROJEÇÃO DO MÊS ATUAL ATÉ 12 MESES) -->
+            <!-- 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO -->
             <div id="pag-simulacao" class="page">
                 <div class="card">
                     <h3>Simulador de Viabilidade e Novos Gastos (Projeção 12 Meses)</h3>
@@ -731,43 +731,15 @@
             }
         }
 
-        function atualizarGrupoNoLocalStorage(grupoId, novosDadosGerais) {
-            for (let i = 0; i < localStorage.length; i++) {
-                let key = localStorage.key(i);
-                if (key && key.startsWith("financas_")) {
-                    let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
-                    let alterou = false;
-
-                    dadosMes.forEach(item => {
-                        if (item.grupoId === grupoId) {
-                            alterou = true;
-                            item.valor = novosDadosGerais.valor;
-                            item.tipo = novosDadosGerais.tipo;
-                            
-                            let sufixoParcela = item.categoria.match(/\s\(\d+\/\d+\)$/);
-                            item.categoria = novosDadosGerais.categoria + (sufixoParcela ? sufixoParcela[0] : '');
-
-                            if (novosDadosGerais.dia) {
-                                let partes = item.data.split('-');
-                                item.data = `${partes[0]}-${partes[1]}-${novosDadosGerais.dia}`;
-                            }
-                        }
-                    });
-
-                    if (alterou) {
-                        localStorage.setItem(key, JSON.stringify(dadosMes));
-                    }
-                }
-            }
-        }
-
+        /* CORREÇÃO DA EDIÇÃO PARCELADA */
         function adicionarLancamento() {
-            let editIndex = document.getElementById('edit-index').value;
+            let editId = document.getElementById('edit-id').value;
             let editGrupoId = document.getElementById('edit-grupo-id').value;
             let dataLancamento = document.getElementById('data-lancamento').value;
             let categoria = document.getElementById('categoria').value;
             let tipo = document.getElementById('tipo').value;
             let valorInformado = parseFloat(document.getElementById('valor').value);
+            let qtdParcelas = parseInt(document.getElementById('qtd-parcelas').value) || 1;
             
             if(!dataLancamento) return alert("Selecione a data do lançamento!");
             if(!valorInformado || isNaN(valorInformado)) return alert("Digite um valor válido!");
@@ -775,75 +747,66 @@
             let mesDoLancamento = dataLancamento.slice(0, 7);
             let diaDoLancamento = dataLancamento.slice(8, 10);
 
-            if (editIndex !== "" && editGrupoId) {
-                if (confirm("Deseja aplicar estas alterações também em todos os meses futuros deste lançamento?")) {
-                    atualizarGrupoNoLocalStorage(editGrupoId, {
-                        valor: valorInformado,
-                        categoria: categoria,
-                        tipo: tipo,
-                        dia: diaDoLancamento
-                    });
-
-                    resetarFormulario();
-                    atualizarDashboard();
-                    return;
+            // SE ESTIVER EDITANDO
+            if (editId !== "") {
+                if (editGrupoId) {
+                    // SE É PARCELADO, REMOVE AS PARCELAS ANTIGAS PARA RECRIAR A NOVA QUANTIDADE/VALOR
+                    removerGrupoDoLocalStorage(editGrupoId);
                 } else {
+                    // SE É UM LANÇAMENTO ÚNICO
                     let chaveMesOriginal = obterChave();
                     let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
-                    dados.splice(editIndex, 1);
-                    localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
+                    let indexReal = dados.findIndex(item => item.id === editId);
+                    if (indexReal !== -1) {
+                        dados.splice(indexReal, 1);
+                        localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
+                    }
                 }
-            } else if (editIndex !== "") {
-                let chaveMesOriginal = obterChave();
-                let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
-                dados.splice(editIndex, 1);
-                localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
             }
 
             let novoGrupoId = 'grupo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
 
-            if (tipo === 'saida') {
-                let qtdParcelas = parseInt(document.getElementById('qtd-parcelas').value) || 1;
+            // SE FOR SAÍDA COM VÁRIAS PARCELAS
+            if (tipo === 'saida' && qtdParcelas > 1) {
+                let [anoIni, mesIni, diaIni] = dataLancamento.split('-').map(Number);
+                let currAno = anoIni;
+                let currMes = mesIni;
 
-                if (qtdParcelas > 1) {
-                    let [anoIni, mesIni, diaIni] = dataLancamento.split('-').map(Number);
-                    let currAno = anoIni;
-                    let currMes = mesIni;
+                for (let i = 0; i < qtdParcelas; i++) {
+                    let mesStr = `${currAno}-${String(currMes).padStart(2, '0')}`;
+                    let dataFinalParcela = `${mesStr}-${String(diaIni).padStart(2, '0')}`;
+                    let chaveMes = "financas_" + mesStr;
+                    let dadosMes = JSON.parse(localStorage.getItem(chaveMes)) || [];
+                    
+                    dadosMes.push({ 
+                        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
+                        grupoId: novoGrupoId,
+                        data: dataFinalParcela,
+                        categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
+                        tipo, 
+                        valor: valorInformado,
+                        pago: false
+                    });
+                    
+                    localStorage.setItem(chaveMes, JSON.stringify(dadosMes));
 
-                    for (let i = 0; i < qtdParcelas; i++) {
-                        let mesStr = `${currAno}-${String(currMes).padStart(2, '0')}`;
-                        let dataFinalParcela = `${mesStr}-${String(diaIni).padStart(2, '0')}`;
-                        let chaveMes = "financas_" + mesStr;
-                        let dadosMes = JSON.parse(localStorage.getItem(chaveMes)) || [];
-                        
-                        dadosMes.push({ 
-                            grupoId: novoGrupoId,
-                            data: dataFinalParcela,
-                            categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
-                            tipo, 
-                            valor: valorInformado,
-                            pago: false
-                        });
-                        
-                        localStorage.setItem(chaveMes, JSON.stringify(dadosMes));
-
-                        currMes++;
-                        if (currMes > 12) {
-                            currMes = 1;
-                            currAno++;
-                        }
+                    currMes++;
+                    if (currMes > 12) {
+                        currMes = 1;
+                        currAno++;
                     }
-
-                    resetarFormulario();
-                    atualizarDashboard();
-                    alert(`Lançamento de ${qtdParcelas}x de R$ ${valorInformado.toFixed(2)} cadastrado com sucesso!`);
-                    return;
                 }
+
+                resetarFormulario();
+                atualizarDashboard();
+                return;
             }
 
+            // SE FOR À VISTA OU ENTRADA
             let chaveMesOriginal = "financas_" + mesDoLancamento;
             let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
             dados.push({ 
+                id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
                 grupoId: novoGrupoId,
                 data: dataLancamento, 
                 categoria, 
@@ -865,16 +828,19 @@
             document.getElementById('qtd-parcelas').value = "1";
             document.getElementById('tipo').value = "saida";
             controlarCamposParcela();
-            document.getElementById('edit-index').value = "";
+            document.getElementById('edit-id').value = "";
             document.getElementById('edit-grupo-id').value = "";
             document.getElementById('titulo-form').innerText = "Novo Lançamento";
             document.getElementById('btn-salvar').innerText = "Adicionar";
             document.getElementById('btn-cancelar').style.display = "none";
         }
 
-        function editar(index) {
+        /* BUSCA POR ID ÚNICO EVITA SELECIONAR ITEM ERRADO NA TABELA */
+        function editarPorId(itemId) {
             let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
-            let item = dados[index];
+            let item = dados.find(i => i.id === itemId);
+
+            if (!item) return;
 
             document.getElementById('data-lancamento').value = item.data || '';
             document.getElementById('tipo').value = item.tipo || 'saida';
@@ -883,8 +849,15 @@
             let catLimpa = item.categoria.replace(/\s\(\d+\/\d+\)$/, '');
             document.getElementById('categoria').value = catLimpa;
             
+            let matchParcela = item.categoria.match(/\((\d+)\/(\d+)\)$/);
+            if (matchParcela) {
+                document.getElementById('qtd-parcelas').value = matchParcela[2];
+            } else {
+                document.getElementById('qtd-parcelas').value = "1";
+            }
+
             document.getElementById('valor').value = item.valor || '';
-            document.getElementById('edit-index').value = index;
+            document.getElementById('edit-id').value = item.id;
             document.getElementById('edit-grupo-id').value = item.grupoId || '';
 
             document.getElementById('titulo-form').innerText = "Editar Lançamento";
@@ -898,29 +871,32 @@
             resetarFormulario();
         }
 
-        function deletar(index) {
+        function deletarPorId(itemId) {
             let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
-            let item = dados[index];
+            let item = dados.find(i => i.id === itemId);
+
+            if (!item) return;
 
             if (item && item.grupoId) {
                 if(!confirm("Esta é uma despesa parcelada. Deseja excluir esta parcela e TODAS as parcelas associadas em todos os meses?")) return;
                 removerGrupoDoLocalStorage(item.grupoId);
             } else {
                 if(!confirm("Deseja realmente excluir este lançamento?")) return;
-                dados.splice(index, 1);
+                dados = dados.filter(i => i.id !== itemId);
                 localStorage.setItem(obterChave(), JSON.stringify(dados));
             }
 
             atualizarDashboard();
         }
 
-        function marcarComoPago(indexOriginal) {
+        function marcarComoPagoPorId(itemId) {
             let mesRef = document.getElementById('mes-referencia').value;
             let chave = obterChave(mesRef);
             let dados = JSON.parse(localStorage.getItem(chave)) || [];
 
-            if (dados[indexOriginal]) {
-                dados[indexOriginal].pago = true;
+            let item = dados.find(i => i.id === itemId);
+            if (item) {
+                item.pago = true;
                 localStorage.setItem(chave, JSON.stringify(dados));
                 atualizarDashboard();
             }
@@ -934,9 +910,17 @@
             let tbody = document.querySelector("#tabela-lancamentos tbody");
             tbody.innerHTML = "";
 
+            // Garante ID único em lançamentos legados que não possuem
+            dados.forEach(item => {
+                if (!item.id) {
+                    item.id = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+                }
+            });
+            localStorage.setItem(obterChave(), JSON.stringify(dados));
+
             dados.sort((a, b) => new Date(a.data || '2026-01-01') - new Date(b.data || '2026-01-01'));
 
-            dados.forEach((item, index) => {
+            dados.forEach(item => {
                 if(item.tipo === 'entrada') entradas += item.valor;
                 else saidas += item.valor;
 
@@ -948,8 +932,8 @@
                     <td><span style="color: ${item.tipo === 'entrada' ? '#27ae60' : '#e74c3c'}; font-weight:600;">${item.tipo.toUpperCase()}</span></td>
                     <td>R$ ${item.valor.toFixed(2)}</td>
                     <td>
-                        <button onclick="editar(${index})" style="background:#3182ce; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto; margin-right:4px;">Editar</button>
-                        <button onclick="deletar(${index})" style="background:#e53e3e; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto;">X</button>
+                        <button onclick="editarPorId('${item.id}')" style="background:#3182ce; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto; margin-right:4px;">Editar</button>
+                        <button onclick="deletarPorId('${item.id}')" style="background:#e53e3e; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto;">X</button>
                     </td>
                 </tr>`;
             });
@@ -982,7 +966,7 @@
             let totalAgenda = 0;
             let encontrou = false;
 
-            dados.forEach((item, index) => {
+            dados.forEach(item => {
                 if (item.tipo === 'saida' && item.data && !item.pago) {
                     let itemData = new Date(item.data + 'T00:00:00');
                     let statusBadge = "";
@@ -1007,7 +991,7 @@
                             <td><strong>${dataFormatada}</strong></td>
                             <td>${item.categoria}</td>
                             <td style="color: #e53e3e; font-weight: 600;">R$ ${item.valor.toFixed(2)}</td>
-                            <td><button class="btn-pago" onclick="marcarComoPago(${index})">✓ Marcar Pago</button></td>
+                            <td><button class="btn-pago" onclick="marcarComoPagoPorId('${item.id}')">✓ Marcar Pago</button></td>
                         </tr>`;
                     }
                 }
@@ -1050,10 +1034,9 @@
                 return;
             }
 
-            // Pega o Mês/Ano Atual para ser o Mês 1 da simulação
             let hoje = new Date();
             let anoAtual = hoje.getFullYear();
-            let mesAtual = hoje.getMonth(); // 0 a 11
+            let mesAtual = hoje.getMonth();
 
             let valorParcela = valorTotalSim / numParcelasSim;
             let projecao12Meses = [];
@@ -1061,7 +1044,6 @@
             let menorSaldo = Infinity;
             let mesCritico = "";
 
-            // Projetar exatamente 12 meses a partir do mês corrente
             for (let i = 0; i < 12; i++) {
                 let d = new Date(anoAtual, mesAtual + i, 1);
                 let y = d.getFullYear();
@@ -1229,7 +1211,7 @@
                 html += `<tr><td colspan="2" style="text-align: center; color: #a0aec0;">Nenhum registro encontrado para este filtro.</td></tr>`;
             }
 
-            html += `</tbody></table>`;
+            html += `</tbody>mtable>`;
             document.getElementById('resultado-relatorio').innerHTML = html;
         }
 
