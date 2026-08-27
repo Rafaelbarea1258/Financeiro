@@ -500,6 +500,151 @@
         </div>
     </div>
 
+    <!-- SDKs do Firebase (Modular Version 10) -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // ================= CONFIGURAÇÃO DO SEU FIREBASE =================
+        // Cole suas chaves reais do Firebase aqui
+        const firebaseConfig = {
+            apiKey: "COLE_AQUI_SUA_API_KEY",
+            authDomain: "COLE_AQUI_SEU_AUTH_DOMAIN",
+            projectId: "COLE_AQUI_SEU_PROJECT_ID",
+            storageBucket: "COLE_AQUI_SEU_STORAGE_BUCKET",
+            messagingSenderId: "COLE_AQUI_SEU_MESSAGING_SENDER_ID",
+            appId: "COLE_AQUI_SEU_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Variáveis Globais de Dados
+        window.todosLancamentos = [];
+        let unsubscribe = null;
+
+        // Escuta o banco de dados em TEMPO REAL para atualizar as telas
+        function escutarBancoEmTempoReal() {
+            if (unsubscribe) unsubscribe();
+
+            const colRef = collection(db, "lancamentos");
+            unsubscribe = onSnapshot(colRef, (snapshot) => {
+                window.todosLancamentos = [];
+                snapshot.forEach(docSnap => {
+                    window.todosLancamentos.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                
+                atualizarDashboard();
+                if (document.getElementById('pag-simulacao').classList.contains('active')) {
+                    calcularSimulacao12Meses();
+                }
+            });
+        }
+
+        window.adicionarLancamento = async function() {
+            let editId = document.getElementById('edit-id').value;
+            let editGrupoId = document.getElementById('edit-grupo-id').value;
+            let dataLancamento = document.getElementById('data-lancamento').value;
+            let categoria = document.getElementById('categoria').value;
+            let tipo = document.getElementById('tipo').value;
+            let valorInformado = parseFloat(document.getElementById('valor').value);
+            let qtdParcelas = parseInt(document.getElementById('qtd-parcelas').value) || 1;
+            
+            if(!dataLancamento) return alert("Selecione a data do lançamento!");
+            if(!valorInformado || isNaN(valorInformado)) return alert("Digite um valor válido!");
+
+            let mesDoLancamento = dataLancamento.slice(0, 7);
+            let diaDoLancamento = dataLancamento.slice(8, 10);
+
+            // Se for edição
+            if (editId !== "") {
+                if (editGrupoId) {
+                    await window.removerGrupoDoBanco(editGrupoId);
+                } else {
+                    await deleteDoc(doc(db, "lancamentos", editId));
+                }
+            }
+
+            let novoGrupoId = 'grupo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+            // Parcelado
+            if (tipo === 'saida' && qtdParcelas > 1) {
+                let [anoIni, mesIni, diaIni] = dataLancamento.split('-').map(Number);
+                let currAno = anoIni;
+                let currMes = mesIni;
+
+                for (let i = 0; i < qtdParcelas; i++) {
+                    let mesStr = `${currAno}-${String(currMes).padStart(2, '0')}`;
+                    let dataFinalParcela = `${mesStr}-${String(diaIni).padStart(2, '0')}`;
+                    let docId = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+                    await setDoc(doc(db, "lancamentos", docId), {
+                        grupoId: novoGrupoId,
+                        data: dataFinalParcela,
+                        categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
+                        tipo, 
+                        valor: valorInformado,
+                        pago: false,
+                        mesRef: mesStr
+                    });
+
+                    currMes++;
+                    if (currMes > 12) {
+                        currMes = 1;
+                        currAno++;
+                    }
+                }
+
+                resetarFormulario();
+                return;
+            }
+
+            // À vista ou entrada
+            let docId = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+            await setDoc(doc(db, "lancamentos", docId), {
+                grupoId: novoGrupoId,
+                data: dataLancamento, 
+                categoria, 
+                tipo, 
+                valor: valorInformado,
+                pago: false,
+                mesRef: mesDoLancamento
+            });
+            
+            resetarFormulario();
+        };
+
+        window.removerGrupoDoBanco = async function(grupoId) {
+            const q = query(collection(db, "lancamentos"), where("grupoId", "==", grupoId));
+            const querySnapshot = await getDocs(q);
+            querySnapshot.forEach(async (docSnap) => {
+                await deleteDoc(doc(db, "lancamentos", docSnap.id));
+            });
+        };
+
+        window.deletarPorId = async function(itemId) {
+            let item = window.todosLancamentos.find(i => i.id === itemId);
+            if (!item) return;
+
+            if (item.grupoId) {
+                if(!confirm("Esta é uma despesa parcelada. Deseja excluir esta parcela e TODAS as parcelas associadas em todos os meses?")) return;
+                await window.removerGrupoDoBanco(item.grupoId);
+            } else {
+                if(!confirm("Deseja realmente excluir este lançamento?")) return;
+                await deleteDoc(doc(db, "lancamentos", itemId));
+            }
+        };
+
+        window.marcarComoPagoPorId = async function(itemId) {
+            let item = window.todosLancamentos.find(i => i.id === itemId);
+            if (item) {
+                await setDoc(doc(db, "lancamentos", itemId), { pago: true }, { merge: true });
+            }
+        };
+
+        escutarBancoEmTempoReal();
+    </script>
+
     <script>
         let currentChart = null;
         let sixMonthsChart = null;
@@ -675,10 +820,6 @@
             }
         }
 
-        function obterChave(mesStr) {
-            return "financas_" + (mesStr || document.getElementById('mes-referencia').value);
-        }
-
         function aoMudarMesReferencia() {
             let mesRef = document.getElementById('mes-referencia').value;
             let dataAtualLanc = document.getElementById('data-lancamento').value;
@@ -692,131 +833,6 @@
             }
 
             document.getElementById('data-lancamento').value = `${mesRef}-${diaAtual}`;
-            atualizarDashboard();
-        }
-
-        function autoCorrigirDatasParcelasLocais() {
-            for (let i = 0; i < localStorage.length; i++) {
-                let key = localStorage.key(i);
-                if (key && key.startsWith("financas_")) {
-                    let mesDaChave = key.replace("financas_", "");
-                    let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
-                    let mudou = false;
-
-                    dadosMes.forEach(item => {
-                        if (item.data && item.data.slice(0, 7) !== mesDaChave) {
-                            let dia = item.data.slice(8, 10);
-                            item.data = `${mesDaChave}-${dia}`;
-                            mudou = true;
-                        }
-                    });
-
-                    if (mudou) {
-                        localStorage.setItem(key, JSON.stringify(dadosMes));
-                    }
-                }
-            }
-        }
-
-        function removerGrupoDoLocalStorage(grupoId) {
-            for (let i = 0; i < localStorage.length; i++) {
-                let key = localStorage.key(i);
-                if (key && key.startsWith("financas_")) {
-                    let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
-                    let novosDados = dadosMes.filter(item => item.grupoId !== grupoId);
-                    if (novosDados.length !== dadosMes.length) {
-                        localStorage.setItem(key, JSON.stringify(novosDados));
-                    }
-                }
-            }
-        }
-
-        /* CORREÇÃO DA EDIÇÃO PARCELADA */
-        function adicionarLancamento() {
-            let editId = document.getElementById('edit-id').value;
-            let editGrupoId = document.getElementById('edit-grupo-id').value;
-            let dataLancamento = document.getElementById('data-lancamento').value;
-            let categoria = document.getElementById('categoria').value;
-            let tipo = document.getElementById('tipo').value;
-            let valorInformado = parseFloat(document.getElementById('valor').value);
-            let qtdParcelas = parseInt(document.getElementById('qtd-parcelas').value) || 1;
-            
-            if(!dataLancamento) return alert("Selecione a data do lançamento!");
-            if(!valorInformado || isNaN(valorInformado)) return alert("Digite um valor válido!");
-
-            let mesDoLancamento = dataLancamento.slice(0, 7);
-            let diaDoLancamento = dataLancamento.slice(8, 10);
-
-            // SE ESTIVER EDITANDO
-            if (editId !== "") {
-                if (editGrupoId) {
-                    // SE É PARCELADO, REMOVE AS PARCELAS ANTIGAS PARA RECRIAR A NOVA QUANTIDADE/VALOR
-                    removerGrupoDoLocalStorage(editGrupoId);
-                } else {
-                    // SE É UM LANÇAMENTO ÚNICO
-                    let chaveMesOriginal = obterChave();
-                    let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
-                    let indexReal = dados.findIndex(item => item.id === editId);
-                    if (indexReal !== -1) {
-                        dados.splice(indexReal, 1);
-                        localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
-                    }
-                }
-            }
-
-            let novoGrupoId = 'grupo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-
-            // SE FOR SAÍDA COM VÁRIAS PARCELAS
-            if (tipo === 'saida' && qtdParcelas > 1) {
-                let [anoIni, mesIni, diaIni] = dataLancamento.split('-').map(Number);
-                let currAno = anoIni;
-                let currMes = mesIni;
-
-                for (let i = 0; i < qtdParcelas; i++) {
-                    let mesStr = `${currAno}-${String(currMes).padStart(2, '0')}`;
-                    let dataFinalParcela = `${mesStr}-${String(diaIni).padStart(2, '0')}`;
-                    let chaveMes = "financas_" + mesStr;
-                    let dadosMes = JSON.parse(localStorage.getItem(chaveMes)) || [];
-                    
-                    dadosMes.push({ 
-                        id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
-                        grupoId: novoGrupoId,
-                        data: dataFinalParcela,
-                        categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
-                        tipo, 
-                        valor: valorInformado,
-                        pago: false
-                    });
-                    
-                    localStorage.setItem(chaveMes, JSON.stringify(dadosMes));
-
-                    currMes++;
-                    if (currMes > 12) {
-                        currMes = 1;
-                        currAno++;
-                    }
-                }
-
-                resetarFormulario();
-                atualizarDashboard();
-                return;
-            }
-
-            // SE FOR À VISTA OU ENTRADA
-            let chaveMesOriginal = "financas_" + mesDoLancamento;
-            let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
-            dados.push({ 
-                id: 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9),
-                grupoId: novoGrupoId,
-                data: dataLancamento, 
-                categoria, 
-                tipo, 
-                valor: valorInformado,
-                pago: false
-            });
-            localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
-            
-            resetarFormulario();
             atualizarDashboard();
         }
 
@@ -835,11 +851,8 @@
             document.getElementById('btn-cancelar').style.display = "none";
         }
 
-        /* BUSCA POR ID ÚNICO EVITA SELECIONAR ITEM ERRADO NA TABELA */
         function editarPorId(itemId) {
-            let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
-            let item = dados.find(i => i.id === itemId);
-
+            let item = (window.todosLancamentos || []).find(i => i.id === itemId);
             if (!item) return;
 
             document.getElementById('data-lancamento').value = item.data || '';
@@ -871,52 +884,12 @@
             resetarFormulario();
         }
 
-        function deletarPorId(itemId) {
-            let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
-            let item = dados.find(i => i.id === itemId);
-
-            if (!item) return;
-
-            if (item && item.grupoId) {
-                if(!confirm("Esta é uma despesa parcelada. Deseja excluir esta parcela e TODAS as parcelas associadas em todos os meses?")) return;
-                removerGrupoDoLocalStorage(item.grupoId);
-            } else {
-                if(!confirm("Deseja realmente excluir este lançamento?")) return;
-                dados = dados.filter(i => i.id !== itemId);
-                localStorage.setItem(obterChave(), JSON.stringify(dados));
-            }
-
-            atualizarDashboard();
-        }
-
-        function marcarComoPagoPorId(itemId) {
-            let mesRef = document.getElementById('mes-referencia').value;
-            let chave = obterChave(mesRef);
-            let dados = JSON.parse(localStorage.getItem(chave)) || [];
-
-            let item = dados.find(i => i.id === itemId);
-            if (item) {
-                item.pago = true;
-                localStorage.setItem(chave, JSON.stringify(dados));
-                atualizarDashboard();
-            }
-        }
-
         function atualizarDashboard() {
-            autoCorrigirDatasParcelasLocais();
             let mesRef = document.getElementById('mes-referencia').value;
-            let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
+            let dados = (window.todosLancamentos || []).filter(i => i.mesRef === mesRef);
             let entradas = 0, saidas = 0;
             let tbody = document.querySelector("#tabela-lancamentos tbody");
             tbody.innerHTML = "";
-
-            // Garante ID único em lançamentos legados que não possuem
-            dados.forEach(item => {
-                if (!item.id) {
-                    item.id = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-                }
-            });
-            localStorage.setItem(obterChave(), JSON.stringify(dados));
 
             dados.sort((a, b) => new Date(a.data || '2026-01-01') - new Date(b.data || '2026-01-01'));
 
@@ -947,7 +920,7 @@
 
         function atualizarAgendaContas() {
             let mesRef = document.getElementById('mes-referencia').value;
-            let dados = JSON.parse(localStorage.getItem(obterChave(mesRef))) || [];
+            let dados = (window.todosLancamentos || []).filter(i => i.mesRef === mesRef);
             let tbody = document.querySelector("#tabela-contas-urgentes tbody");
             tbody.innerHTML = "";
 
@@ -1004,7 +977,7 @@
             document.getElementById('total-contas-agenda').innerText = "Total: R$ " + totalAgenda.toFixed(2);
         }
 
-        /* ================= SIMULAÇÃO DE VIABILIDADE (DO MÊS ATUAL ATÉ 12 MESES) ================= */
+        /* ================= SIMULAÇÃO DE VIABILIDADE ================= */
         function calcularSimulacao12Meses() {
             let valorTotalSim = parseFloat(document.getElementById('sim-valor').value) || 0;
             let numParcelasSim = parseInt(document.getElementById('sim-parcelas').value) || 1;
@@ -1048,9 +1021,9 @@
                 let d = new Date(anoAtual, mesAtual + i, 1);
                 let y = d.getFullYear();
                 let m = String(d.getMonth() + 1).padStart(2, '0');
-                let chaveMes = `financas_${y}-${m}`;
+                let mesKey = `${y}-${m}`;
 
-                let dadosMes = JSON.parse(localStorage.getItem(chaveMes)) || [];
+                let dadosMes = (window.todosLancamentos || []).filter(item => item.mesRef === mesKey);
                 let ent = dadosMes.filter(item => item.tipo === 'entrada').reduce((acc, item) => acc + item.valor, 0);
                 let sai = dadosMes.filter(item => item.tipo === 'saida').reduce((acc, item) => acc + item.valor, 0);
                 let saldoPrevisto = ent - sai;
@@ -1063,11 +1036,11 @@
 
                 if (saldoFinal < menorSaldo) {
                     menorSaldo = saldoFinal;
-                    mesCritico = formatarNomeMes(`${y}-${m}`);
+                    mesCritico = formatarNomeMes(mesKey);
                 }
 
                 projecao12Meses.push({
-                    mesLabel: formatarNomeMes(`${y}-${m}`),
+                    mesLabel: formatarNomeMes(mesKey),
                     saldoPrevisto,
                     aplicaParcela,
                     parcelaMes,
@@ -1124,7 +1097,7 @@
 
         function atualizarGraficos() {
             let mesRef = document.getElementById('mes-referencia').value;
-            let dados = JSON.parse(localStorage.getItem(obterChave(mesRef))) || [];
+            let dados = (window.todosLancamentos || []).filter(i => i.mesRef === mesRef);
             let ent = dados.filter(i => i.tipo === 'entrada').reduce((a, b) => a + b.valor, 0);
             let sai = dados.filter(i => i.tipo === 'saida').reduce((a, b) => a + b.valor, 0);
 
@@ -1144,7 +1117,7 @@
             let dadosEntradas = [], dadosSaidas = [];
 
             meses.forEach(mKey => {
-                let regs = JSON.parse(localStorage.getItem("financas_" + mKey)) || [];
+                let regs = (window.todosLancamentos || []).filter(i => i.mesRef === mKey);
                 let e = 0, s = 0;
                 regs.forEach(r => { r.tipo === 'entrada' ? e += r.valor : s += r.valor; });
                 dadosEntradas.push(e);
@@ -1187,7 +1160,7 @@
         function gerarRelatorio() {
             let mesRel = document.getElementById('mes-relatorio').value;
             let tipoFiltro = document.getElementById('filtro-tipo-relatorio').value;
-            let dados = JSON.parse(localStorage.getItem("financas_" + mesRel)) || [];
+            let dados = (window.todosLancamentos || []).filter(i => i.mesRef === mesRel);
             let agrupado = {};
 
             dados.forEach(item => {
@@ -1211,7 +1184,7 @@
                 html += `<tr><td colspan="2" style="text-align: center; color: #a0aec0;">Nenhum registro encontrado para este filtro.</td></tr>`;
             }
 
-            html += `</tbody>mtable>`;
+            html += `</tbody></table>`;
             document.getElementById('resultado-relatorio').innerHTML = html;
         }
 
