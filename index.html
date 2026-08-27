@@ -212,7 +212,7 @@
                 <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div>
                         <label>Orçamento do Mês:</label>
-                        <input type="month" id="mes-referencia" onchange="atualizarDashboard()" style="width: auto; margin-bottom: 0;">
+                        <input type="month" id="mes-referencia" onchange="aoMudarMesReferencia()" style="width: auto; margin-bottom: 0;">
                     </div>
                 </div>
 
@@ -640,7 +640,24 @@
             return "financas_" + (mesStr || document.getElementById('mes-referencia').value);
         }
 
-        /* FUNÇÃO AUTOMÁTICA QUE CORRIGE AS DATAS DE PARCELAS EXISTENTES NOS BANCOS LOCAIS */
+        /* AJUSTA O CAMPO DATA DO FORMULÁRIO DE LANÇAMENTO PARA O MÊS SELECIONADO NO ORÇAMENTO */
+        function aoMudarMesReferencia() {
+            let mesRef = document.getElementById('mes-referencia').value;
+            let dataAtualLanc = document.getElementById('data-lancamento').value;
+            
+            let diaAtual = dataAtualLanc ? dataAtualLanc.slice(8, 10) : new Date().toISOString().slice(8, 10);
+            
+            // Valida dias para meses com menos de 31 dias
+            let [ano, mes] = mesRef.split('-').map(Number);
+            let ultimoDiaDoMes = new Date(ano, mes, 0).getDate();
+            if (parseInt(diaAtual) > ultimoDiaDoMes) {
+                diaAtual = String(ultimoDiaDoMes).padStart(2, '0');
+            }
+
+            document.getElementById('data-lancamento').value = `${mesRef}-${diaAtual}`;
+            atualizarDashboard();
+        }
+
         function autoCorrigirDatasParcelasLocais() {
             for (let i = 0; i < localStorage.length; i++) {
                 let key = localStorage.key(i);
@@ -804,9 +821,10 @@
         }
 
         function resetarFormulario() {
-            let hoje = new Date().toISOString().slice(0,10);
+            let mesRef = document.getElementById('mes-referencia').value;
+            let diaHoje = new Date().toISOString().slice(8, 10);
             document.getElementById('valor').value = "";
-            document.getElementById('data-lancamento').value = hoje;
+            document.getElementById('data-lancamento').value = `${mesRef}-${diaHoje}`;
             document.getElementById('qtd-parcelas').value = "1";
             document.getElementById('tipo').value = "saida";
             controlarCamposParcela();
@@ -1140,12 +1158,11 @@
 
         let hoje = new Date().toISOString().slice(0,10);
         document.getElementById('mes-referencia').value = hoje.slice(0,7);
-        document.getElementById('data-lancamento').value = hoje;
         
         renderizarOpcoesCategorias();
         controlarCamposParcela();
         verificarSessao();
-        atualizarDashboard();
+        aoMudarMesReferencia();
     </script>
 </body>
 </html>
