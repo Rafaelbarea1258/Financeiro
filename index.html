@@ -145,55 +145,18 @@
         .badge-hoje { background: #ebf8ff; color: #2b6cb0; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
         .badge-proximo { background: #feebc8; color: #c05621; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
 
-        /* ================= RESPONSIVIDADE PARA CELULARES E TABLETS ================= */
         @media(max-width: 768px) {
-            body {
-                flex-direction: column;
-                height: auto;
-                overflow-y: auto;
-            }
-            .sidebar {
-                width: 100%;
-                height: auto;
-                border-right: none;
-                border-bottom: 1px solid #e2e8f0;
-            }
-            .sidebar-menu {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: space-around;
-                padding: 5px 0;
-            }
-            .sidebar-menu li a {
-                padding: 8px 10px;
-                font-size: 0.85rem;
-                border-right: none !important;
-            }
-            .main-container {
-                height: auto;
-                overflow-y: visible;
-            }
-            .topbar {
-                height: 55px;
-                padding: 0 15px;
-            }
-            .content {
-                padding: 15px;
-            }
-            .grid-2 {
-                grid-template-columns: 1fr;
-                gap: 15px;
-            }
-            .card {
-                padding: 15px;
-                margin-bottom: 15px;
-            }
-            table {
-                font-size: 0.8rem;
-            }
-            th, td {
-                padding: 8px;
-            }
+            body { flex-direction: column; height: auto; overflow-y: auto; }
+            .sidebar { width: 100%; height: auto; border-right: none; border-bottom: 1px solid #e2e8f0; }
+            .sidebar-menu { display: flex; flex-wrap: wrap; justify-content: space-around; padding: 5px 0; }
+            .sidebar-menu li a { padding: 8px 10px; font-size: 0.85rem; border-right: none !important; }
+            .main-container { height: auto; overflow-y: visible; }
+            .topbar { height: 55px; padding: 0 15px; }
+            .content { padding: 15px; }
+            .grid-2 { grid-template-columns: 1fr; gap: 15px; }
+            .card { padding: 15px; margin-bottom: 15px; }
+            table { font-size: 0.8rem; }
+            th, td { padding: 8px; }
         }
     </style>
 </head>
@@ -223,11 +186,9 @@
         </div>
     </div>
 
-    <!-- Sidebar vertical fixa no lado esquerdo / topo no mobile -->
+    <!-- Sidebar vertical -->
     <div class="sidebar">
-        <div class="sidebar-brand">
-            Financeiro Casa
-        </div>
+        <div class="sidebar-brand">Financeiro Casa</div>
         <ul class="sidebar-menu">
             <li><a class="active" onclick="switchPage('pag-lancamentos', this)">📊 Lançamentos</a></li>
             <li><a onclick="switchPage('pag-graficos', this)">📈 Gráficos</a></li>
@@ -239,16 +200,14 @@
 
     <!-- Main Container -->
     <div class="main-container">
-        <!-- Topbar com saudação e botão sair -->
         <div class="topbar">
             <span class="user-greeting" id="saudacao-usuario">Olá, Usuário</span>
             <button class="btn-logout" onclick="fazerLogout()">Sair</button>
         </div>
 
-        <!-- Conteúdo Principal -->
         <div class="content">
 
-            <!-- ================= 1. PÁGINA: LANÇAMENTOS & DASHBOARD ================= -->
+            <!-- 1. PÁGINA: LANÇAMENTOS & DASHBOARD -->
             <div id="pag-lancamentos" class="page active">
                 <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
                     <div>
@@ -298,14 +257,11 @@
                         </select>
 
                         <label>Categoria / Plano de Contas</label>
-                        <select id="categoria">
-                            <!-- Opções renderizadas dinamicamente via JS -->
-                        </select>
+                        <select id="categoria"></select>
 
                         <label>Valor da Parcela (R$)</label>
                         <input type="number" id="valor" placeholder="Valor (R$)">
 
-                        <!-- Opção de Número de Parcelas (Exclusivo para Saídas) -->
                         <div id="bloco-parcela" style="display: block; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
                             <label style="color: #2b6cb0;">Número de Parcelas</label>
                             <select id="qtd-parcelas" style="margin-bottom: 0;">
@@ -329,7 +285,7 @@
                         <button id="btn-cancelar" onclick="cancelarEdicao()" style="background: #cbd5e0; color: #2d3748; margin-top: 8px; display: none; width: 100%; border:none; padding:10px; border-radius:6px; font-weight:600; cursor:pointer;">Cancelar Edição</button>
                     </div>
 
-                    <!-- Dashboard / Resumo -->
+                    <!-- Resumo -->
                     <div class="card">
                         <h3>Resumo do Mês</h3>
                         <div class="resumo-box">
@@ -366,7 +322,7 @@
                 </div>
             </div>
 
-            <!-- ================= 2. PÁGINA: GRÁFICOS ================= -->
+            <!-- 2. PÁGINA: GRÁFICOS -->
             <div id="pag-graficos" class="page">
                 <div class="grid-2">
                     <div class="card">
@@ -375,7 +331,6 @@
                             <canvas id="currentMonthChart"></canvas>
                         </div>
                     </div>
-
                     <div class="card">
                         <h3>Evolução dos Últimos 6 Meses</h3>
                         <div class="chart-container">
@@ -385,7 +340,7 @@
                 </div>
             </div>
 
-            <!-- ================= 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO ================= -->
+            <!-- 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO -->
             <div id="pag-simulacao" class="page">
                 <div class="card">
                     <h3>Simulador de Investimentos e Novos Gastos</h3>
@@ -438,7 +393,7 @@
                 </div>
             </div>
 
-            <!-- ================= 4. PÁGINA: RELATÓRIOS ================= -->
+            <!-- 4. PÁGINA: RELATÓRIOS -->
             <div id="pag-relatorios" class="page">
                 <div class="card">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
@@ -468,7 +423,7 @@
                 </div>
             </div>
 
-            <!-- ================= 5. PÁGINA: CONFIGURAÇÕES / CATEGORIAS ================= -->
+            <!-- 5. PÁGINA: CONFIGURAÇÕES / CATEGORIAS -->
             <div id="pag-configuracoes" class="page">
                 <div class="grid-2">
                     <div class="card">
@@ -685,6 +640,30 @@
             return "financas_" + (mesStr || document.getElementById('mes-referencia').value);
         }
 
+        /* FUNÇÃO AUTOMÁTICA QUE CORRIGE AS DATAS DE PARCELAS EXISTENTES NOS BANCOS LOCAIS */
+        function autoCorrigirDatasParcelasLocais() {
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key && key.startsWith("financas_")) {
+                    let mesDaChave = key.replace("financas_", "");
+                    let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
+                    let mudou = false;
+
+                    dadosMes.forEach(item => {
+                        if (item.data && item.data.slice(0, 7) !== mesDaChave) {
+                            let dia = item.data.slice(8, 10);
+                            item.data = `${mesDaChave}-${dia}`;
+                            mudou = true;
+                        }
+                    });
+
+                    if (mudou) {
+                        localStorage.setItem(key, JSON.stringify(dadosMes));
+                    }
+                }
+            }
+        }
+
         function removerGrupoDoLocalStorage(grupoId) {
             for (let i = 0; i < localStorage.length; i++) {
                 let key = localStorage.key(i);
@@ -893,6 +872,7 @@
         }
 
         function atualizarDashboard() {
+            autoCorrigirDatasParcelasLocais();
             let mesRef = document.getElementById('mes-referencia').value;
             let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
             let entradas = 0, saidas = 0;
@@ -932,12 +912,10 @@
             let tbody = document.querySelector("#tabela-contas-urgentes tbody");
             tbody.innerHTML = "";
 
-            // Considera a data base baseada no mês selecionado
             let dataBase = new Date(mesRef + '-01T00:00:00');
             let hojeReal = new Date();
             hojeReal.setHours(0, 0, 0, 0);
 
-            // Se o mês selecionado for o mês atual real, usa o dia atual real; caso contrário, usa o dia 1º do mês selecionado
             let mesRefAnoMes = mesRef;
             let hojeAnoMes = hojeReal.toISOString().slice(0, 7);
             
@@ -961,7 +939,6 @@
                     } else if (itemData > dataReferenciaCalculo && itemData <= limiteDezDias) {
                         statusBadge = `<span class="badge-proximo">PRÓXIMOS 10 DIAS</span>`;
                     } else {
-                        // Exibe todas as pendentes do mês no painel
                         statusBadge = `<span class="badge-hoje">PENDENTE</span>`;
                     }
 
