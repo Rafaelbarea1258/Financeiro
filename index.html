@@ -220,6 +220,7 @@
                         <label>Orçamento do Mês:</label>
                         <input type="month" id="mes-referencia" onchange="aoMudarMesReferencia()" style="width: auto; margin-bottom: 0;">
                     </div>
+                    <button class="btn-excel" onclick="migrarLocalStorageParaFirebase()" style="background: #3182ce;">🔄 Sincronizar Meus Dados Locais para Nuvem</button>
                 </div>
 
                 <!-- PAINEL DE CONTAS DO DIA & VENCIMENTOS -->
@@ -505,8 +506,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ================= CONFIGURAÇÃO DO SEU FIREBASE =================
-        // Cole suas chaves reais do Firebase aqui
+        // CONFIGURAÇÃO DO SEU FIREBASE
         const firebaseConfig = {
             apiKey: "COLE_AQUI_SUA_API_KEY",
             authDomain: "COLE_AQUI_SEU_AUTH_DOMAIN",
@@ -519,11 +519,10 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // Variáveis Globais de Dados
         window.todosLancamentos = [];
         let unsubscribe = null;
 
-        // Escuta o banco de dados em TEMPO REAL para atualizar as telas
+        // Função de Escuta em Tempo Real do Banco de Dados
         function escutarBancoEmTempoReal() {
             if (unsubscribe) unsubscribe();
 
@@ -541,6 +540,37 @@
             });
         }
 
+        // ROTINA PARA MIGRAR OS DADOS SALVOS NO LOCALSTORAGE PARA O FIREBASE
+        window.migrarLocalStorageParaFirebase = async function() {
+            let migrados = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key && key.startsWith("financas_")) {
+                    let mesRef = key.replace("financas_", "");
+                    let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
+
+                    for (let item of dadosMes) {
+                        let docId = item.id || ('item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+                        await setDoc(doc(db, "lancamentos", docId), {
+                            grupoId: item.grupoId || ('grupo_' + Date.now()),
+                            data: item.data || `${mesRef}-01`,
+                            categoria: item.categoria || 'Geral',
+                            tipo: item.tipo || 'saida',
+                            valor: parseFloat(item.valor) || 0,
+                            pago: !!item.pago,
+                            mesRef: item.data ? item.data.slice(0, 7) : mesRef
+                        }, { merge: true });
+                        migrados++;
+                    }
+                }
+            }
+            if (migrados > 0) {
+                alert(`Sucesso! ${migrados} lançamentos salvos anteriormente no seu navegador foram migrados para o Firebase. Agora a Sara conseguirá visualizar tudo no aparelho dela!`);
+            } else {
+                alert("Nenhum dado pendente no LocalStorage para migração.");
+            }
+        };
+
         window.adicionarLancamento = async function() {
             let editId = document.getElementById('edit-id').value;
             let editGrupoId = document.getElementById('edit-grupo-id').value;
@@ -556,7 +586,6 @@
             let mesDoLancamento = dataLancamento.slice(0, 7);
             let diaDoLancamento = dataLancamento.slice(8, 10);
 
-            // Se for edição
             if (editId !== "") {
                 if (editGrupoId) {
                     await window.removerGrupoDoBanco(editGrupoId);
@@ -567,7 +596,6 @@
 
             let novoGrupoId = 'grupo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
 
-            // Parcelado
             if (tipo === 'saida' && qtdParcelas > 1) {
                 let [anoIni, mesIni, diaIni] = dataLancamento.split('-').map(Number);
                 let currAno = anoIni;
@@ -599,7 +627,6 @@
                 return;
             }
 
-            // À vista ou entrada
             let docId = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
             await setDoc(doc(db, "lancamentos", docId), {
                 grupoId: novoGrupoId,
