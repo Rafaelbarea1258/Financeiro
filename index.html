@@ -346,12 +346,12 @@
                 </div>
             </div>
 
-            <!-- 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO (REFORMULADA - PROJEÇÃO 12 MESES) -->
+            <!-- 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO (PROJEÇÃO DO MÊS ATUAL ATÉ 12 MESES) -->
             <div id="pag-simulacao" class="page">
                 <div class="card">
                     <h3>Simulador de Viabilidade e Novos Gastos (Projeção 12 Meses)</h3>
                     <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">
-                        Simule o impacto de um novo gasto nas suas projeções mensais para os próximos 12 meses.
+                        Simule o impacto de um novo gasto nas suas projeções mensais a partir do mês atual até 12 meses para frente.
                     </p>
 
                     <!-- Formulário da Simulação -->
@@ -411,7 +411,7 @@
 
                     <!-- Tabela de Projeção Mês a Mês (12 Meses) -->
                     <div style="margin-top: 15px;">
-                        <h4 style="font-size: 0.95rem; color: #2d3748; margin-bottom: 10px;">Projeção Mês a Mês (Próximos 12 Meses)</h4>
+                        <h4 style="font-size: 0.95rem; color: #2d3748; margin-bottom: 10px;">Projeção Mês a Mês (Mês Atual + 12 Meses)</h4>
                         <div style="max-height: 350px; overflow-y: auto;">
                             <table id="tabela-simulacao-12meses">
                                 <thead>
@@ -1020,7 +1020,7 @@
             document.getElementById('total-contas-agenda').innerText = "Total: R$ " + totalAgenda.toFixed(2);
         }
 
-        /* ================= SIMULAÇÃO DE VIABILIDADE - 12 MESES ================= */
+        /* ================= SIMULAÇÃO DE VIABILIDADE (DO MÊS ATUAL ATÉ 12 MESES) ================= */
         function calcularSimulacao12Meses() {
             let valorTotalSim = parseFloat(document.getElementById('sim-valor').value) || 0;
             let numParcelasSim = parseInt(document.getElementById('sim-parcelas').value) || 1;
@@ -1050,17 +1050,20 @@
                 return;
             }
 
-            let mesRefBase = document.getElementById('mes-referencia').value || new Date().toISOString().slice(0, 7);
-            let [anoBase, mesBase] = mesRefBase.split('-').map(Number);
-            let valorParcela = valorTotalSim / numParcelasSim;
+            // Pega o Mês/Ano Atual para ser o Mês 1 da simulação
+            let hoje = new Date();
+            let anoAtual = hoje.getFullYear();
+            let mesAtual = hoje.getMonth(); // 0 a 11
 
+            let valorParcela = valorTotalSim / numParcelasSim;
             let projecao12Meses = [];
             let mesesComDeficit = 0;
             let menorSaldo = Infinity;
             let mesCritico = "";
 
+            // Projetar exatamente 12 meses a partir do mês corrente
             for (let i = 0; i < 12; i++) {
-                let d = new Date(anoBase, mesBase - 1 + i, 1);
+                let d = new Date(anoAtual, mesAtual + i, 1);
                 let y = d.getFullYear();
                 let m = String(d.getMonth() + 1).padStart(2, '0');
                 let chaveMes = `financas_${y}-${m}`;
@@ -1121,19 +1124,19 @@
                 badgeEl.innerText = "Risco Baixo";
                 badgeEl.className = "badge-risco badge-risco-baixo";
                 bannerEl.className = "status-banner banner-sucesso";
-                bannerEl.innerText = `✅ VIÁVEL: A parcela de R$ ${valorParcela.toFixed(2)} cabe nas suas projeções sem negativar o orçamento.`;
+                bannerEl.innerText = `✅ VIÁVEL: A parcela de R$ ${valorParcela.toFixed(2)} cabe nas suas projeções dos próximos 12 meses.`;
             } else if (probabilidade >= 50) {
                 probEl.className = "text-blue";
                 badgeEl.innerText = "Risco Médio";
                 badgeEl.className = "badge-risco badge-risco-medio";
                 bannerEl.className = "status-banner banner-atencao";
-                bannerEl.innerText = `⚡ ATENÇÃO: A compra é viável na maioria dos meses, mas causará saldo negativo em ${mesesComDeficit} mês(es).`;
+                bannerEl.innerText = `⚡ ATENÇÃO: A compra é viável na maioria dos meses, mas causará déficit em ${mesesComDeficit} mês(es).`;
             } else {
                 probEl.className = "text-red";
                 badgeEl.innerText = "Risco Alto";
                 badgeEl.className = "badge-risco badge-risco-alto";
                 bannerEl.className = "status-banner banner-perigo";
-                bannerEl.innerText = `⚠️ NÃO RECOMENDADO: Esta parcela deixará seu orçamento negativo em ${mesesComDeficit} dos ${duracaoAnalise} meses analisados.`;
+                bannerEl.innerText = `⚠️ NÃO RECOMENDADO: Esta parcela comprometerá seu orçamento em ${mesesComDeficit} dos ${duracaoAnalise} meses analisados.`;
             }
         }
 
