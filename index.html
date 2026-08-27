@@ -137,6 +137,11 @@
         .banner-atencao { background: #feebc8; color: #744210; border: 1px solid #fbd38d; }
         .banner-perigo { background: #fed7d7; color: #742a2a; border: 1px solid #feb2b2; }
 
+        /* Badges de Vencimento */
+        .badge-atraso { background: #fed7d7; color: #c53030; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+        .badge-hoje { background: #ebf8ff; color: #2b6cb0; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+        .badge-proximo { background: #feebc8; color: #c05621; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
+
         /* ================= RESPONSIVIDADE PARA CELULARES E TABLETS ================= */
         @media(max-width: 768px) {
             body {
@@ -249,6 +254,28 @@
                     </div>
                 </div>
 
+                <!-- PAINEL DE CONTAS DO DIA & VENCIMENTOS (ATRASO, HOJE E PRÓXIMOS 10 DIAS) -->
+                <div class="card" style="border-left: 5px solid #e53e3e;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                        <h3 style="margin-bottom: 0;">🚨 Agenda de Pagamentos (Atraso, Hoje e Próximos 10 Dias)</h3>
+                        <span id="total-contas-agenda" style="font-size: 1.1rem; font-weight: bold; color: #e53e3e;">Total: R$ 0,00</span>
+                    </div>
+
+                    <div style="max-height: 220px; overflow-y: auto;">
+                        <table id="tabela-contas-urgentes">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>Data Vencimento</th>
+                                    <th>Categoria</th>
+                                    <th>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="grid-2">
                     <!-- Lançamentos -->
                     <div class="card">
@@ -262,8 +289,8 @@
 
                         <label>Tipo</label>
                         <select id="tipo" onchange="controlarCamposParcela()">
+                            <option value="saida" selected>Saída</option>
                             <option value="entrada">Entrada</option>
-                            <option value="saida">Saída</option>
                         </select>
 
                         <label>Categoria / Plano de Contas</label>
@@ -275,7 +302,7 @@
                         <input type="number" id="valor" placeholder="Valor (R$)">
 
                         <!-- Opção de Número de Parcelas (Exclusivo para Saídas) -->
-                        <div id="bloco-parcela" style="display: none; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
+                        <div id="bloco-parcela" style="display: block; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
                             <label style="color: #2b6cb0;">Número de Parcelas</label>
                             <select id="qtd-parcelas" style="margin-bottom: 0;">
                                 <option value="1" selected>1x (À vista)</option>
@@ -493,7 +520,7 @@
                 "Materiais de Construção", "Manutenção", "Construção", "Água", "Gás",
                 "Ração para Animais", "Manutenção de Carro", "Combustível", "IPVA",
                 "Empréstimos", "Cartão de Crédito", "Luz", "Internet",
-                "CRESS Sara Assistente Social", "MEI Negociação Rafael"
+                "CRESS Sara Assistente Social", "MEI Negociação Rafael", "Futebol Óliver"
             ]
         };
 
@@ -509,12 +536,12 @@
             let catSelect = document.getElementById('categoria');
             let lista = obterCategorias();
 
-            let html = `<optgroup label="Entradas">`;
-            lista.entradas.forEach(c => {
+            let html = `<optgroup label="Despesas">`;
+            lista.despesas.forEach(c => {
                 html += `<option value="${c}">${c}</option>`;
             });
-            html += `</optgroup><optgroup label="Despesas">`;
-            lista.despesas.forEach(c => {
+            html += `</optgroup><optgroup label="Entradas">`;
+            lista.entradas.forEach(c => {
                 html += `<option value="${c}">${c}</option>`;
             });
             html += `</optgroup>`;
@@ -759,7 +786,7 @@
             document.getElementById('valor').value = "";
             document.getElementById('data-lancamento').value = hoje;
             document.getElementById('qtd-parcelas').value = "1";
-            document.getElementById('tipo').value = "entrada";
+            document.getElementById('tipo').value = "saida";
             controlarCamposParcela();
             document.getElementById('edit-index').value = "";
             document.getElementById('edit-grupo-id').value = "";
@@ -773,7 +800,7 @@
             let item = dados[index];
 
             document.getElementById('data-lancamento').value = item.data || '';
-            document.getElementById('tipo').value = item.tipo || 'entrada';
+            document.getElementById('tipo').value = item.tipo || 'saida';
             controlarCamposParcela();
             
             let catLimpa = item.categoria.replace(/\s\(\d+\/\d+\)$/, '');
@@ -811,6 +838,7 @@
         }
 
         function atualizarDashboard() {
+            let mesRef = document.getElementById('mes-referencia').value;
             let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
             let entradas = 0, saidas = 0;
             let tbody = document.querySelector("#tabela-lancamentos tbody");
@@ -839,6 +867,59 @@
             document.getElementById('total-entradas').innerText = "R$ " + entradas.toFixed(2);
             document.getElementById('total-saidas').innerText = "R$ " + saidas.toFixed(2);
             document.getElementById('saldo-final').innerText = "R$ " + (entradas - saidas).toFixed(2);
+
+            atualizarAgendaContas();
+        }
+
+        /* LÓGICA DA AGENDA DE CONTAS (ATRASO, HOJE E PRÓXIMOS 10 DIAS) */
+        function atualizarAgendaContas() {
+            let mesRef = document.getElementById('mes-referencia').value;
+            let dados = JSON.parse(localStorage.getItem(obterChave(mesRef))) || [];
+            let tbody = document.querySelector("#tabela-contas-urgentes tbody");
+            tbody.innerHTML = "";
+
+            let hojeStr = new Date().toISOString().slice(0, 10);
+            let hoje = new Date(hojeStr + 'T00:00:00');
+            
+            let limiteDezDias = new Date(hoje);
+            limiteDezDias.setDate(limiteDezDias.getDate() + 10);
+
+            let totalAgenda = 0;
+            let encontrou = false;
+
+            dados.forEach(item => {
+                if (item.tipo === 'saida' && item.data) {
+                    let itemData = new Date(item.data + 'T00:00:00');
+                    let statusBadge = "";
+
+                    if (itemData < hoje) {
+                        statusBadge = `<span class="badge-atraso">EM ATRASO</span>`;
+                    } else if (itemData.getTime() === hoje.getTime()) {
+                        statusBadge = `<span class="badge-hoje">VENCE HOJE</span>`;
+                    } else if (itemData > hoje && itemData <= limiteDezDias) {
+                        statusBadge = `<span class="badge-proximo">PRÓXIMOS 10 DIAS</span>`;
+                    }
+
+                    if (statusBadge !== "") {
+                        encontrou = true;
+                        totalAgenda += item.valor;
+                        let dataFormatada = item.data.split('-').reverse().join('/');
+
+                        tbody.innerHTML += `<tr>
+                            <td>${statusBadge}</td>
+                            <td><strong>${dataFormatada}</strong></td>
+                            <td>${item.categoria}</td>
+                            <td style="color: #e53e3e; font-weight: 600;">R$ ${item.valor.toFixed(2)}</td>
+                        </tr>`;
+                    }
+                }
+            });
+
+            if (!encontrou) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#a0aec0;">Nenhuma conta em atraso, vencendo hoje ou nos próximos 10 dias.</td></tr>`;
+            }
+
+            document.getElementById('total-contas-agenda').innerText = "Total: R$ " + totalAgenda.toFixed(2);
         }
 
         /* LÓGICA DA SIMULAÇÃO DE INVESTIMENTO/GASTO */
@@ -1020,6 +1101,7 @@
         document.getElementById('data-lancamento').value = hoje;
         
         renderizarOpcoesCategorias();
+        controlarCamposParcela();
         verificarSessao();
         atualizarDashboard();
     </script>
