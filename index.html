@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financeiro Casa - Financeiro</title>
+    <!-- Importando Chart.js via CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f4f6f9; display: flex; height: 100vh; overflow: hidden; }
+
+        /* ================= TELA DE LOGIN ================= */
+        .login-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: #ffffff;
+            padding: 35px 30px;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 380px;
+            text-align: center;
+        }
+
+        .login-card h2 {
+            color: #e53e3e;
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+        }
+
+        .login-card p {
+            color: #718096;
+            font-size: 0.9rem;
+            margin-bottom: 25px;
+        }
+
+        .login-form label {
+            text-align: left;
+        }
+
+        .error-message {
+            color: #e53e3e;
+            font-size: 0.85rem;
+            margin-bottom: 12px;
+            display: none;
+            text-align: left;
+            font-weight: 500;
+        }
+
+        .btn-login {
+            background: #e53e3e;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+            margin-top: 5px;
+        }
+
+        .btn-login:hover {
+            background: #c53030;
+        }
+
+        /* Sidebar no lado esquerdo com layout padrão */
+        .sidebar { width: 260px; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; flex-shrink: 0; }
+        .sidebar-brand { padding: 20px; font-size: 1.1rem; font-weight: bold; color: #e53e3e; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #edf2f7; }
+        .sidebar-menu { list-style: none; padding: 15px 0; }
+        .sidebar-menu li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #4a5568; text-decoration: none; font-weight: 500; cursor: pointer; transition: 0.2s; }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active { background: #fff5f5; color: #e53e3e; border-right: 4px solid #e53e3e; }
+
+        /* Main Container */
+        .main-container { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        
+        /* Topbar */
+        .topbar { background: #ffffff; height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 0 30px; gap: 20px; flex-shrink: 0; }
+        .user-greeting { font-size: 0.95rem; color: #2d3748; font-weight: 500; }
+        .btn-logout { background: #e53e3e; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-logout:hover { background: #c53030; }
+
+        /* Content Area */
+        .content { padding: 30px; }
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* Cards & UI */
+        .card { background: white; border-radius: 8px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 25px; }
+        .card h3 { font-size: 1.1rem; color: #2d3748; margin-bottom: 20px; }
+        
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+        label { display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
+        input, select { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.95rem; color: #2d3748; outline: none; margin-bottom: 15px; background: #fff; }
+        input:focus, select:focus { border-color: #3182ce; box-shadow: 0 0 0 3px rgba(66,153,225,0.15); }
+
+        .btn-primary { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
+        .btn-primary:hover { background: #219653; }
+
+        .btn-excel { background: #27ae60; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-excel:hover { background: #219653; }
+
+        .btn-pdf { background: #e74c3c; color: white; border: none; padding: 10px 15px; border-radius: 6px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 5px; }
+        .btn-pdf:hover { background: #c0392b; }
+
+        /* Tabelas */
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; padding: 12px; font-size: 0.85rem; color: #718096; background: #f7fafc; border-bottom: 1px solid #e2e8f0; }
+        td { padding: 12px; font-size: 0.9rem; color: #2d3748; border-bottom: 1px solid #edf2f7; }
+        
+        .resumo-box { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #f7fafc; border-radius: 6px; margin-bottom: 10px; border: 1px solid #e2e8f0; }
+        .resumo-box span { font-size: 1.1rem; font-weight: bold; }
+        .text-green { color: #27ae60; }
+        .text-red { color: #e74c3c; }
+        .text-blue { color: #3182ce; }
+
+        .chart-container { position: relative; height: 300px; width: 100%; display: flex; justify-content: center; align-items: center; }
+
+        /* ================= RESPONSIVIDADE PARA CELULARES E TABLETS ================= */
+        @media(max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow-y: auto;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 1px solid #e2e8f0;
+            }
+            .sidebar-menu {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-around;
+                padding: 5px 0;
+            }
+            .sidebar-menu li a {
+                padding: 8px 10px;
+                font-size: 0.85rem;
+                border-right: none !important;
+            }
+            .main-container {
+                height: auto;
+                overflow-y: visible;
+            }
+            .topbar {
+                height: 55px;
+                padding: 0 15px;
+            }
+            .content {
+                padding: 15px;
+            }
+            .grid-2 {
+                grid-template-columns: 1fr;
+                gap: 15px;
+            }
+            .card {
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            table {
+                font-size: 0.8rem;
+            }
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ================= TELA DE LOGIN ================= -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card">
+            <h2>Financeiro Casa</h2>
+            <p>Selecione seu usuário para acessar</p>
+            
+            <form class="login-form" onsubmit="autenticar(event)">
+                <label for="login-usuario">Usuário</label>
+                <select id="login-usuario" required>
+                    <option value="" disabled selected>Selecione um usuário...</option>
+                    <option value="Rafael Baréa">Rafael Baréa</option>
+                    <option value="Sara Piaia">Sara Piaia</option>
+                </select>
+
+                <label for="login-senha">Senha</label>
+                <input type="password" id="login-senha" placeholder="Digite sua senha" required>
+
+                <div id="error-msg" class="error-message">Senha incorreta!</div>
+
+                <button type="submit" class="btn-login">Entrar</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Sidebar vertical fixa no lado esquerdo / topo no mobile -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            Financeiro Casa
+        </div>
+        <ul class="sidebar-menu">
+            <li><a class="active" onclick="switchPage('pag-lancamentos', this)">📊 Lançamentos</a></li>
+            <li><a onclick="switchPage('pag-graficos', this)">📈 Gráficos</a></li>
+            <li><a onclick="switchPage('pag-relatorios', this)">📄 Relatórios</a></li>
+        </ul>
+    </div>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Topbar com saudação e botão sair -->
+        <div class="topbar">
+            <span class="user-greeting" id="saudacao-usuario">Olá, Usuário</span>
+            <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+        </div>
+
+        <!-- Conteúdo Principal -->
+        <div class="content">
+
+            <!-- ================= 1. PÁGINA: LANÇAMENTOS & DASHBOARD ================= -->
+            <div id="pag-lancamentos" class="page active">
+                <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+                    <div>
+                        <label>Orçamento do Mês:</label>
+                        <input type="month" id="mes-referencia" onchange="atualizarDashboard()" style="width: auto; margin-bottom: 0;">
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <!-- Lançamentos -->
+                    <div class="card">
+                        <h3 id="titulo-form">Novo Lançamento</h3>
+                        
+                        <input type="hidden" id="edit-index" value="">
+                        <input type="hidden" id="edit-grupo-id" value="">
+
+                        <label>Data do Lançamento</label>
+                        <input type="date" id="data-lancamento">
+
+                        <label>Tipo</label>
+                        <select id="tipo" onchange="controlarCamposParcela()">
+                            <option value="entrada">Entrada</option>
+                            <option value="saida">Saída</option>
+                        </select>
+
+                        <label>Categoria / Plano de Contas</label>
+                        <select id="categoria">
+                            <optgroup label="Entradas">
+                                <option value="Salário Esposo">Salário Esposo</option>
+                                <option value="Salário Esposa">Salário Esposa</option>
+                                <option value="Renda Extra">Renda Extra</option>
+                            </optgroup>
+                            <optgroup label="Despesas">
+                                <option value="Mercado">Mercado</option>
+                                <option value="Padaria">Padaria</option>
+                                <option value="Lanche">Lanche</option>
+                                <option value="Pizzaria">Pizzaria</option>
+                                <option value="Materiais de Construção">Materiais de Construção</option>
+                                <option value="Manutenção">Manutenção</option>
+                                <option value="Construção">Construção</option>
+                                <option value="Água">Água</option>
+                                <option value="Gás">Gás</option>
+                                <option value="Ração para Animais">Ração para Animais</option>
+                                <option value="Manutenção de Carro">Manutenção de Carro</option>
+                                <option value="Combustível">Combustível</option>
+                                <option value="IPVA">IPVA</option>
+                                <option value="Empréstimos">Empréstimos</option>
+                                <option value="Cartão de Crédito">Cartão de Crédito</option>
+                                <option value="Luz">Luz</option>
+                                <option value="Internet">Internet</option>
+                                <option value="CRESS Sara Assistente Social">CRESS Sara Assistente Social</option>
+                                <option value="MEI Negociação Rafael">MEI Negociação Rafael</option>
+                            </optgroup>
+                        </select>
+
+                        <label>Valor da Parcela (R$)</label>
+                        <input type="number" id="valor" placeholder="Valor (R$)">
+
+                        <!-- Opção de Número de Parcelas (Exclusivo para Saídas) -->
+                        <div id="bloco-parcela" style="display: none; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 15px;">
+                            <label style="color: #2b6cb0;">Número de Parcelas</label>
+                            <select id="qtd-parcelas" style="margin-bottom: 0;">
+                                <option value="1" selected>1x (À vista)</option>
+                                <option value="2">2x</option>
+                                <option value="3">3x</option>
+                                <option value="4">4x</option>
+                                <option value="5">5x</option>
+                                <option value="6">6x</option>
+                                <option value="10">10x</option>
+                                <option value="12">12x</option>
+                            </select>
+                            <small style="color: #718096; display: block; margin-top: 6px;">O valor informado será repetido em cada mês escolhido.</small>
+                        </div>
+
+                        <button class="btn-primary" id="btn-salvar" onclick="adicionarLancamento()">Adicionar</button>
+                        <button id="btn-cancelar" onclick="cancelarEdicao()" style="background: #cbd5e0; color: #2d3748; margin-top: 8px; display: none; width: 100%; border:none; padding:10px; border-radius:6px; font-weight:600; cursor:pointer;">Cancelar Edição</button>
+                    </div>
+
+                    <!-- Dashboard / Resumo -->
+                    <div class="card">
+                        <h3>Resumo do Mês</h3>
+                        <div class="resumo-box">
+                            <span>Entradas:</span>
+                            <span id="total-entradas" class="text-green">R$ 0,00</span>
+                        </div>
+                        <div class="resumo-box">
+                            <span>Saídas:</span>
+                            <span id="total-saidas" class="text-red">R$ 0,00</span>
+                        </div>
+                        <div class="resumo-box" style="background: #ebf8ff; border-color: #bee3f8;">
+                            <span>Saldo Final:</span>
+                            <span id="saldo-final" class="text-blue">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Lista de Movimentações</h3>
+                    <div style="max-height: 300px; overflow-y: auto;">
+                        <table id="tabela-lancamentos">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Categoria</th>
+                                    <th>Tipo</th>
+                                    <th>Valor</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= 2. PÁGINA: GRÁFICOS ================= -->
+            <div id="pag-graficos" class="page">
+                <div class="grid-2">
+                    <!-- Gráfico 1: Mês Atual -->
+                    <div class="card">
+                        <h3>Mês Atual (Entradas vs Saídas)</h3>
+                        <div class="chart-container">
+                            <canvas id="currentMonthChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Gráfico 2: Evolução 6 Meses -->
+                    <div class="card">
+                        <h3>Evolução dos Últimos 6 Meses</h3>
+                        <div class="chart-container">
+                            <canvas id="sixMonthsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================= 3. PÁGINA: RELATÓRIOS ================= -->
+            <div id="pag-relatorios" class="page">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
+                        <h3>Gerar Relatório por Plano de Contas</h3>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn-excel" onclick="exportarExcel()">📥 Excel</button>
+                            <button class="btn-pdf" onclick="exportarPDF()">🖨️ PDF</button>
+                        </div>
+                    </div>
+
+                    <div class="grid-2" style="margin-bottom: 15px;">
+                        <div>
+                            <label>Filtrar Tipo:</label>
+                            <select id="filtro-tipo-relatorio" onchange="gerarRelatorio()">
+                                <option value="todos">Entradas e Saídas</option>
+                                <option value="entrada">Somente Entradas</option>
+                                <option value="saida">Somente Saídas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>Mês de Referência:</label>
+                            <input type="month" id="mes-relatorio" onchange="gerarRelatorio()">
+                        </div>
+                    </div>
+
+                    <div id="resultado-relatorio" style="max-height: 400px; overflow-y: auto;">
+                        <!-- Tabela agrupada será injetada aqui -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        let currentChart = null;
+        let sixMonthsChart = null;
+
+        // LÓGICA DE AUTENTICAÇÃO
+        function verificarSessao() {
+            let usuarioLogado = localStorage.getItem('usuario_logado');
+            let authValida = localStorage.getItem('auth_valida');
+            let overlay = document.getElementById('login-overlay');
+            let saudacao = document.getElementById('saudacao-usuario');
+
+            if (usuarioLogado && authValida === "true") {
+                overlay.style.display = 'none';
+                saudacao.innerText = `Olá, ${usuarioLogado}`;
+            } else {
+                overlay.style.display = 'flex';
+            }
+        }
+
+        function autenticar(event) {
+            event.preventDefault();
+            let usuario = document.getElementById('login-usuario').value;
+            let senha = document.getElementById('login-senha').value;
+            let errorMsg = document.getElementById('error-msg');
+
+            if (senha === "145565") {
+                localStorage.setItem('usuario_logado', usuario);
+                localStorage.setItem('auth_valida', 'true');
+                errorMsg.style.display = 'none';
+                document.getElementById('login-senha').value = '';
+                verificarSessao();
+            } else {
+                errorMsg.style.display = 'block';
+            }
+        }
+
+        function fazerLogout() {
+            localStorage.removeItem('usuario_logado');
+            localStorage.removeItem('auth_valida');
+            verificarSessao();
+        }
+
+        function switchPage(pageId, btn) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            btn.classList.add('active');
+
+            if (pageId === 'pag-graficos') {
+                atualizarGraficos();
+            } else if (pageId === 'pag-relatorios') {
+                document.getElementById('mes-relatorio').value = document.getElementById('mes-referencia').value;
+                gerarRelatorio();
+            }
+        }
+
+        function controlarCamposParcela() {
+            let tipo = document.getElementById('tipo').value;
+            let blocoParcela = document.getElementById('bloco-parcela');
+            if (tipo === 'saida') {
+                blocoParcela.style.display = 'block';
+            } else {
+                blocoParcela.style.display = 'none';
+                document.getElementById('qtd-parcelas').value = "1";
+            }
+        }
+
+        function obterChave(mesStr) {
+            return "financas_" + (mesStr || document.getElementById('mes-referencia').value);
+        }
+
+        function removerGrupoDoLocalStorage(grupoId) {
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                if (key && key.startsWith("financas_")) {
+                    let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
+                    let novosDados = dadosMes.filter(item => item.grupoId !== grupoId);
+                    if (novosDados.length !== dadosMes.length) {
+                        localStorage.setItem(key, JSON.stringify(novosDados));
+                    }
+                }
+            }
+        }
+
+        function adicionarLancamento() {
+            let editIndex = document.getElementById('edit-index').value;
+            let editGrupoId = document.getElementById('edit-grupo-id').value;
+            let dataLancamento = document.getElementById('data-lancamento').value;
+            let categoria = document.getElementById('categoria').value;
+            let tipo = document.getElementById('tipo').value;
+            let valorInformado = parseFloat(document.getElementById('valor').value);
+            
+            if(!dataLancamento) return alert("Selecione a data do lançamento!");
+            if(!valorInformado || isNaN(valorInformado)) return alert("Digite um valor válido!");
+
+            let mesDoLancamento = dataLancamento.slice(0, 7);
+
+            if (editIndex !== "") {
+                let chaveMesOriginal = obterChave();
+                let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
+                
+                if (editGrupoId) {
+                    removerGrupoDoLocalStorage(editGrupoId);
+                } else {
+                    dados.splice(editIndex, 1);
+                    localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
+                }
+            }
+
+            let novoGrupoId = 'grupo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+            if (tipo === 'saida') {
+                let qtdParcelas = parseInt(document.getElementById('qtd-parcelas').value) || 1;
+
+                if (qtdParcelas > 1) {
+                    let [anoIni, mesIni] = mesDoLancamento.split('-').map(Number);
+                    let currAno = anoIni;
+                    let currMes = mesIni;
+
+                    for (let i = 0; i < qtdParcelas; i++) {
+                        let mesStr = `${currAno}-${String(currMes).padStart(2, '0')}`;
+                        let chaveMes = "financas_" + mesStr;
+                        let dadosMes = JSON.parse(localStorage.getItem(chaveMes)) || [];
+                        
+                        dadosMes.push({ 
+                            grupoId: novoGrupoId,
+                            data: dataLancamento,
+                            categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
+                            tipo, 
+                            valor: valorInformado
+                        });
+                        
+                        localStorage.setItem(chaveMes, JSON.stringify(dadosMes));
+
+                        currMes++;
+                        if (currMes > 12) {
+                            currMes = 1;
+                            currAno++;
+                        }
+                    }
+
+                    resetarFormulario();
+                    atualizarDashboard();
+                    alert(`Lançamento de ${qtdParcelas}x de R$ ${valorInformado.toFixed(2)} cadastrado com sucesso!`);
+                    return;
+                }
+            }
+
+            let chaveMesOriginal = "financas_" + mesDoLancamento;
+            let dados = JSON.parse(localStorage.getItem(chaveMesOriginal)) || [];
+            dados.push({ 
+                grupoId: novoGrupoId,
+                data: dataLancamento, 
+                categoria, 
+                tipo, 
+                valor: valorInformado 
+            });
+            localStorage.setItem(chaveMesOriginal, JSON.stringify(dados));
+            
+            resetarFormulario();
+            atualizarDashboard();
+        }
+
+        function resetarFormulario() {
+            let hoje = new Date().toISOString().slice(0,10);
+            document.getElementById('valor').value = "";
+            document.getElementById('data-lancamento').value = hoje;
+            document.getElementById('qtd-parcelas').value = "1";
+            document.getElementById('tipo').value = "entrada";
+            controlarCamposParcela();
+            document.getElementById('edit-index').value = "";
+            document.getElementById('edit-grupo-id').value = "";
+            document.getElementById('titulo-form').innerText = "Novo Lançamento";
+            document.getElementById('btn-salvar').innerText = "Adicionar";
+            document.getElementById('btn-cancelar').style.display = "none";
+        }
+
+        function editar(index) {
+            let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
+            let item = dados[index];
+
+            document.getElementById('data-lancamento').value = item.data || '';
+            document.getElementById('tipo').value = item.tipo || 'entrada';
+            controlarCamposParcela();
+            
+            let catLimpa = item.categoria.replace(/\s\(\d+\/\d+\)$/, '');
+            document.getElementById('categoria').value = catLimpa;
+            
+            document.getElementById('valor').value = item.valor || '';
+            document.getElementById('edit-index').value = index;
+            document.getElementById('edit-grupo-id').value = item.grupoId || '';
+
+            document.getElementById('titulo-form').innerText = "Editar Lançamento";
+            document.getElementById('btn-salvar').innerText = "Salvar Alterações";
+            document.getElementById('btn-cancelar').style.display = "block";
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelarEdicao() {
+            resetarFormulario();
+        }
+
+        function deletar(index) {
+            let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
+            let item = dados[index];
+
+            if (item && item.grupoId) {
+                if(!confirm("Esta é uma despesa parcelada. Deseja excluir TODAS as parcelas deste grupo em todos os meses?")) return;
+                removerGrupoDoLocalStorage(item.grupoId);
+            } else {
+                if(!confirm("Deseja realmente excluir este lançamento?")) return;
+                dados.splice(index, 1);
+                localStorage.setItem(obterChave(), JSON.stringify(dados));
+            }
+
+            atualizarDashboard();
+        }
+
+        function atualizarDashboard() {
+            let dados = JSON.parse(localStorage.getItem(obterChave())) || [];
+            let entradas = 0, saidas = 0;
+            let tbody = document.querySelector("#tabela-lancamentos tbody");
+            tbody.innerHTML = "";
+
+            dados.sort((a, b) => new Date(a.data || '2026-01-01') - new Date(b.data || '2026-01-01'));
+
+            dados.forEach((item, index) => {
+                if(item.tipo === 'entrada') entradas += item.valor;
+                else saidas += item.valor;
+
+                let dataFormatada = item.data ? item.data.split('-').reverse().join('/') : '-';
+
+                tbody.innerHTML += `<tr>
+                    <td>${dataFormatada}</td>
+                    <td>${item.categoria}</td>
+                    <td><span style="color: ${item.tipo === 'entrada' ? '#27ae60' : '#e74c3c'}; font-weight:600;">${item.tipo.toUpperCase()}</span></td>
+                    <td>R$ ${item.valor.toFixed(2)}</td>
+                    <td>
+                        <button onclick="editar(${index})" style="background:#3182ce; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto; margin-right:4px;">Editar</button>
+                        <button onclick="deletar(${index})" style="background:#e53e3e; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto;">X</button>
+                    </td>
+                </tr>`;
+            });
+
+            document.getElementById('total-entradas').innerText = "R$ " + entradas.toFixed(2);
+            document.getElementById('total-saidas').innerText = "R$ " + saidas.toFixed(2);
+            document.getElementById('saldo-final').innerText = "R$ " + (entradas - saidas).toFixed(2);
+        }
+
+        function atualizarGraficos() {
+            let mesRef = document.getElementById('mes-referencia').value;
+            let dados = JSON.parse(localStorage.getItem(obterChave(mesRef))) || [];
+            let ent = dados.filter(i => i.tipo === 'entrada').reduce((a, b) => a + b.valor, 0);
+            let sai = dados.filter(i => i.tipo === 'saida').reduce((a, b) => a + b.valor, 0);
+
+            const ctx1 = document.getElementById('currentMonthChart').getContext('2d');
+            if (currentChart) currentChart.destroy();
+            currentChart = new Chart(ctx1, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Entradas', 'Saídas'],
+                    datasets: [{ data: [ent, sai], backgroundColor: ['#27ae60', '#e74c3c'], borderWidth: 0 }]
+                },
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '65%' }
+            });
+
+            let meses = obterUltimosSeisMeses(mesRef);
+            let labels = meses.map(m => formatarNomeMes(m));
+            let dadosEntradas = [], dadosSaidas = [];
+
+            meses.forEach(mKey => {
+                let regs = JSON.parse(localStorage.getItem("financas_" + mKey)) || [];
+                let e = 0, s = 0;
+                regs.forEach(r => { r.tipo === 'entrada' ? e += r.valor : s += r.valor; });
+                dadosEntradas.push(e);
+                dadosSaidas.push(s);
+            });
+
+            const ctx2 = document.getElementById('sixMonthsChart').getContext('2d');
+            if (sixMonthsChart) sixMonthsChart.destroy();
+            sixMonthsChart = new Chart(ctx2, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        { label: 'Entradas', data: dadosEntradas, backgroundColor: '#27ae60', borderRadius: 4 },
+                        { label: 'Saídas', data: dadosSaidas, backgroundColor: '#e74c3c', borderRadius: 4 }
+                    ]
+                },
+                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            });
+        }
+
+        function formatarNomeMes(anoMes) {
+            let [ano, mes] = anoMes.split('-');
+            const meses = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+            return `${meses[parseInt(mes) - 1]}/${ano.slice(2)}`;
+        }
+
+        function obterUltimosSeisMeses(mesAtualStr) {
+            let [ano, mes] = mesAtualStr.split('-').map(Number);
+            let listaMeses = [];
+            for (let i = 5; i >= 0; i--) {
+                let d = new Date(ano, mes - 1 - i, 1);
+                let y = d.getFullYear();
+                let m = String(d.getMonth() + 1).padStart(2, '0');
+                listaMeses.push(`${y}-${m}`);
+            }
+            return listaMeses;
+        }
+
+        function gerarRelatorio() {
+            let mesRel = document.getElementById('mes-relatorio').value;
+            let tipoFiltro = document.getElementById('filtro-tipo-relatorio').value;
+            let dados = JSON.parse(localStorage.getItem("financas_" + mesRel)) || [];
+            let agrupado = {};
+
+            dados.forEach(item => {
+                if (tipoFiltro === 'todos' || item.tipo === tipoFiltro) {
+                    let catNome = item.categoria.replace(/\s\(\d+\/\d+\)$/, '');
+                    agrupado[catNome] = (agrupado[catNome] || 0) + item.valor;
+                }
+            });
+
+            let html = `<table id="tabela-relatorio-dados">
+                <thead>
+                    <tr><th>Plano de Contas</th><th>Valor Total</th></tr>
+                </thead>
+                <tbody>`;
+            
+            for (let cat in agrupado) {
+                html += `<tr><td><strong>${cat}</strong></td><td>R$ ${agrupado[cat].toFixed(2)}</td></tr>`;
+            }
+            
+            if (Object.keys(agrupado).length === 0) {
+                html += `<tr><td colspan="2" style="text-align: center; color: #a0aec0;">Nenhum registro encontrado para este filtro.</td></tr>`;
+            }
+
+            html += `</tbody></table>`;
+            document.getElementById('resultado-relatorio').innerHTML = html;
+        }
+
+        function exportarExcel() {
+            let tabela = document.getElementById('tabela-relatorio-dados');
+            if (!tabela) return alert("Gere o relatório antes de exportar.");
+            
+            let html = tabela.outerHTML;
+            let blob = new Blob(['\uFEFF' + html], { type: 'application/vnd.ms-excel' });
+            let url = URL.createObjectURL(blob);
+            let a = document.createElement('a');
+            a.href = url;
+            a.download = 'relatorio-plano-de-contas.xls';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function exportarPDF() {
+            let mesRel = document.getElementById('mes-relatorio').value;
+            let tipoFiltro = document.getElementById('filtro-tipo-relatorio').value;
+            let conteudoTabela = document.getElementById('resultado-relatorio').innerHTML;
+            
+            let janelaPrint = window.open('', '', 'height=700,width=900');
+            janelaPrint.document.write('<html><head><title>Relatório Financeiro</title>');
+            janelaPrint.document.write('<style>');
+            janelaPrint.document.write('body { font-family: sans-serif; padding: 20px; color: #333; }');
+            janelaPrint.document.write('h2 { color: #e53e3e; margin-bottom: 5px; }');
+            janelaPrint.document.write('p { color: #666; margin-bottom: 20px; }');
+            janelaPrint.document.write('table { width: 100%; border-collapse: collapse; margin-top: 10px; }');
+            janelaPrint.document.write('th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }');
+            janelaPrint.document.write('th { background: #f7fafc; color: #4a5568; }');
+            janelaPrint.document.write('</style></head><body>');
+            janelaPrint.document.write('<h2>Financeiro Casa - Relatório Financeiro</h2>');
+            janelaPrint.document.write(`<p>Mês de Referência: ${mesRel} | Filtro: ${tipoFiltro.toUpperCase()}</p>`);
+            janelaPrint.document.write(conteudoTabela);
+            janelaPrint.document.write('</body></html>');
+            janelaPrint.document.close();
+            janelaPrint.focus();
+            setTimeout(() => {
+                janelaPrint.print();
+                janelaPrint.close();
+            }, 500);
+        }
+
+        let hoje = new Date().toISOString().slice(0,10);
+        document.getElementById('mes-referencia').value = hoje.slice(0,7);
+        document.getElementById('data-lancamento').value = hoje;
+        
+        verificarSessao();
+        atualizarDashboard();
+    </script>
+</body>
+</html>
