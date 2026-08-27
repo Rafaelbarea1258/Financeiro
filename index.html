@@ -104,6 +104,7 @@
         .card h3 { font-size: 1.1rem; color: #2d3748; margin-bottom: 20px; }
         
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
 
         label { display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
         input, select { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 0.95rem; color: #2d3748; outline: none; margin-bottom: 15px; background: #fff; }
@@ -135,10 +136,15 @@
         .chart-container { position: relative; height: 300px; width: 100%; display: flex; justify-content: center; align-items: center; }
 
         /* Estilos da Simulação */
-        .status-banner { padding: 15px 20px; border-radius: 8px; font-weight: bold; font-size: 1.05rem; margin-top: 15px; text-align: center; }
+        .status-banner { padding: 15px 20px; border-radius: 8px; font-weight: bold; font-size: 0.95rem; margin-bottom: 20px; text-align: center; }
         .banner-sucesso { background: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4; }
         .banner-atencao { background: #feebc8; color: #744210; border: 1px solid #fbd38d; }
         .banner-perigo { background: #fed7d7; color: #742a2a; border: 1px solid #feb2b2; }
+
+        .badge-risco { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: bold; margin-top: 5px; }
+        .badge-risco-baixo { background: #c6f6d5; color: #22543d; }
+        .badge-risco-medio { background: #feebc8; color: #744210; }
+        .badge-risco-alto { background: #fed7d7; color: #742a2a; }
 
         /* Badges de Vencimento */
         .badge-atraso { background: #fed7d7; color: #c53030; padding: 3px 8px; border-radius: 4px; font-size: 0.75rem; font-weight: 700; }
@@ -153,7 +159,7 @@
             .main-container { height: auto; overflow-y: visible; }
             .topbar { height: 55px; padding: 0 15px; }
             .content { padding: 15px; }
-            .grid-2 { grid-template-columns: 1fr; gap: 15px; }
+            .grid-2, .grid-3 { grid-template-columns: 1fr; gap: 15px; }
             .card { padding: 15px; margin-bottom: 15px; }
             table { font-size: 0.8rem; }
             th, td { padding: 8px; }
@@ -340,54 +346,87 @@
                 </div>
             </div>
 
-            <!-- 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO -->
+            <!-- 3. PÁGINA: SIMULAÇÃO / INVESTIMENTO (REFORMULADA - PROJEÇÃO 12 MESES) -->
             <div id="pag-simulacao" class="page">
                 <div class="card">
-                    <h3>Simulador de Investimentos e Novos Gastos</h3>
-                    <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Use esta ferramenta para simular se uma nova compra ou investimento cabe no seu orçamento mensal.</p>
+                    <h3>Simulador de Viabilidade e Novos Gastos (Projeção 12 Meses)</h3>
+                    <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">
+                        Simule o impacto de um novo gasto nas suas projeções mensais para os próximos 12 meses.
+                    </p>
 
-                    <div class="grid-2">
+                    <!-- Formulário da Simulação -->
+                    <div class="grid-3" style="margin-bottom: 20px;">
                         <div>
-                            <label>Descrição da Simulação</label>
-                            <input type="text" id="sim-descricao" placeholder="Ex: Curso, Compra de Ferramenta, Viagem...">
-
-                            <label>Valor Total do Investimento/Gasto (R$)</label>
-                            <input type="number" id="sim-valor" placeholder="Ex: 1200.00" oninput="calcularSimulacao()">
-
+                            <label>Descrição do Gasto</label>
+                            <input type="text" id="sim-descricao" placeholder="Ex: Geladeira, Notebook...">
+                        </div>
+                        <div>
+                            <label>Valor Total da Compra (R$)</label>
+                            <input type="number" id="sim-valor" placeholder="Ex: 2000.00" oninput="calcularSimulacao12Meses()">
+                        </div>
+                        <div>
                             <label>Condição de Pagamento</label>
-                            <select id="sim-parcelas" onchange="calcularSimulacao()">
+                            <select id="sim-parcelas" onchange="calcularSimulacao12Meses()">
                                 <option value="1">À vista (1x)</option>
-                                <option value="2">2x</option>
-                                <option value="3">3x</option>
-                                <option value="4">4x</option>
-                                <option value="5">5x</option>
-                                <option value="6">6x</option>
-                                <option value="7">7x</option>
-                                <option value="8">8x</option>
-                                <option value="9">9x</option>
-                                <option value="10">10x</option>
-                                <option value="11">11x</option>
-                                <option value="12">12x</option>
+                                <option value="2">2x parcelado</option>
+                                <option value="3">3x parcelado</option>
+                                <option value="4">4x parcelado</option>
+                                <option value="5">5x parcelado</option>
+                                <option value="6">6x parcelado</option>
+                                <option value="7">7x parcelado</option>
+                                <option value="8">8x parcelado</option>
+                                <option value="9">9x parcelado</option>
+                                <option value="10" selected>10x parcelado</option>
+                                <option value="11">11x parcelado</option>
+                                <option value="12">12x parcelado</option>
                             </select>
                         </div>
+                    </div>
 
-                        <div>
-                            <div class="resumo-box">
-                                <span>Saldo Livre Atual (Mês):</span>
-                                <span id="sim-saldo-atual" class="text-green">R$ 0,00</span>
-                            </div>
-                            <div class="resumo-box">
-                                <span>Impacto Mensal Calculado:</span>
-                                <span id="sim-impacto-mensal" class="text-red">R$ 0,00</span>
-                            </div>
-                            <div class="resumo-box" style="background: #ebf8ff; border-color: #bee3f8;">
-                                <span>Saldo Estimado Pós-Gasto:</span>
-                                <span id="sim-saldo-futuro" class="text-blue">R$ 0,00</span>
-                            </div>
+                    <!-- Cards de Resumo da Análise -->
+                    <div class="grid-3" style="margin-bottom: 20px;">
+                        <div class="resumo-box" style="flex-direction: column; text-align: center; justify-content: center; padding: 15px;">
+                            <span style="font-size: 0.75rem; text-transform: uppercase; color: #718096;">Probabilidade de Viabilidade</span>
+                            <span id="sim-probabilidade" style="font-size: 1.8rem; font-weight: 800;" class="text-blue">-- %</span>
+                            <span id="sim-badge-risco" class="badge-risco">Aguardando dados</span>
+                        </div>
 
-                            <div id="sim-status-banner" class="status-banner banner-sucesso" style="display: none;">
-                                Digite um valor para ver o diagnóstico.
-                            </div>
+                        <div class="resumo-box" style="flex-direction: column; text-align: center; justify-content: center; padding: 15px;">
+                            <span style="font-size: 0.75rem; text-transform: uppercase; color: #718096;">Impacto Mensal Calculado</span>
+                            <span id="sim-impacto-mensal" style="font-size: 1.5rem; font-weight: bold;" class="text-red">R$ 0,00</span>
+                            <span id="sim-detalhe-total" style="font-size: 0.75rem; color: #718096; margin-top: 4px;">Total: R$ 0,00 em 0x</span>
+                        </div>
+
+                        <div class="resumo-box" style="flex-direction: column; text-align: center; justify-content: center; padding: 15px;">
+                            <span style="font-size: 0.75rem; text-transform: uppercase; color: #718096;">Menor Saldo Projetado</span>
+                            <span id="sim-menor-saldo" style="font-size: 1.5rem; font-weight: bold;">R$ 0,00</span>
+                            <span id="sim-mes-critico" style="font-size: 0.75rem; color: #718096; margin-top: 4px;">Mês crítico: N/A</span>
+                        </div>
+                    </div>
+
+                    <!-- Banner de Alerta / Diagnóstico -->
+                    <div id="sim-status-banner" class="status-banner banner-atencao">
+                        Informe o valor e a condição de pagamento para simular a compra.
+                    </div>
+
+                    <!-- Tabela de Projeção Mês a Mês (12 Meses) -->
+                    <div style="margin-top: 15px;">
+                        <h4 style="font-size: 0.95rem; color: #2d3748; margin-bottom: 10px;">Projeção Mês a Mês (Próximos 12 Meses)</h4>
+                        <div style="max-height: 350px; overflow-y: auto;">
+                            <table id="tabela-simulacao-12meses">
+                                <thead>
+                                    <tr>
+                                        <th>Mês</th>
+                                        <th>Saldo Previsto</th>
+                                        <th>Parcela</th>
+                                        <th>Saldo Final</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td colspan="5" style="text-align: center; color: #a0aec0;">Digite um valor para visualizar a projeção mês a mês.</td></tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -616,7 +655,7 @@
             if (pageId === 'pag-graficos') {
                 atualizarGraficos();
             } else if (pageId === 'pag-simulacao') {
-                calcularSimulacao();
+                calcularSimulacao12Meses();
             } else if (pageId === 'pag-relatorios') {
                 document.getElementById('mes-relatorio').value = document.getElementById('mes-referencia').value;
                 gerarRelatorio();
@@ -640,14 +679,12 @@
             return "financas_" + (mesStr || document.getElementById('mes-referencia').value);
         }
 
-        /* AJUSTA O CAMPO DATA DO FORMULÁRIO DE LANÇAMENTO PARA O MÊS SELECIONADO NO ORÇAMENTO */
         function aoMudarMesReferencia() {
             let mesRef = document.getElementById('mes-referencia').value;
             let dataAtualLanc = document.getElementById('data-lancamento').value;
             
             let diaAtual = dataAtualLanc ? dataAtualLanc.slice(8, 10) : new Date().toISOString().slice(8, 10);
             
-            // Valida dias para meses com menos de 31 dias
             let [ano, mes] = mesRef.split('-').map(Number);
             let ultimoDiaDoMes = new Date(ano, mes, 0).getDate();
             if (parseInt(diaAtual) > ultimoDiaDoMes) {
@@ -983,41 +1020,120 @@
             document.getElementById('total-contas-agenda').innerText = "Total: R$ " + totalAgenda.toFixed(2);
         }
 
-        function calcularSimulacao() {
-            let mesRef = document.getElementById('mes-referencia').value;
-            let dados = JSON.parse(localStorage.getItem(obterChave(mesRef))) || [];
-            let entradas = dados.filter(i => i.tipo === 'entrada').reduce((a, b) => a + b.valor, 0);
-            let saidas = dados.filter(i => i.tipo === 'saida').reduce((a, b) => a + b.valor, 0);
-            let saldoLivreAtual = entradas - saidas;
-
+        /* ================= SIMULAÇÃO DE VIABILIDADE - 12 MESES ================= */
+        function calcularSimulacao12Meses() {
             let valorTotalSim = parseFloat(document.getElementById('sim-valor').value) || 0;
             let numParcelasSim = parseInt(document.getElementById('sim-parcelas').value) || 1;
 
-            let impactoMensal = valorTotalSim / numParcelasSim;
-            let saldoFuturo = saldoLivreAtual - impactoMensal;
-
-            document.getElementById('sim-saldo-atual').innerText = "R$ " + saldoLivreAtual.toFixed(2);
-            document.getElementById('sim-impacto-mensal').innerText = "R$ " + impactoMensal.toFixed(2);
-            document.getElementById('sim-saldo-futuro').innerText = "R$ " + saldoFuturo.toFixed(2);
-
-            let banner = document.getElementById('sim-status-banner');
-            banner.style.display = "block";
+            let probEl = document.getElementById('sim-probabilidade');
+            let badgeEl = document.getElementById('sim-badge-risco');
+            let impactoEl = document.getElementById('sim-impacto-mensal');
+            let detalheTotalEl = document.getElementById('sim-detalhe-total');
+            let menorSaldoEl = document.getElementById('sim-menor-saldo');
+            let mesCriticoEl = document.getElementById('sim-mes-critico');
+            let bannerEl = document.getElementById('sim-status-banner');
+            let tbodySim = document.querySelector("#tabela-simulacao-12meses tbody");
 
             if (valorTotalSim <= 0) {
-                banner.className = "status-banner banner-atencao";
-                banner.innerText = "Informe um valor para realizar a simulação.";
+                probEl.innerText = "-- %";
+                probEl.className = "text-blue";
+                badgeEl.innerText = "Aguardando dados";
+                badgeEl.className = "badge-risco";
+                impactoEl.innerText = "R$ 0,00";
+                detalheTotalEl.innerText = "Total: R$ 0,00 em 0x";
+                menorSaldoEl.innerText = "R$ 0,00";
+                menorSaldoEl.style.color = "#2d3748";
+                mesCriticoEl.innerText = "Mês crítico: N/A";
+                bannerEl.className = "status-banner banner-atencao";
+                bannerEl.innerText = "Informe o valor e a condição de pagamento para simular a compra.";
+                tbodySim.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #a0aec0;">Digite um valor para visualizar a projeção mês a mês.</td></tr>';
                 return;
             }
 
-            if (saldoFuturo < 0) {
-                banner.className = "status-banner banner-perigo";
-                banner.innerText = `⚠️ ATENÇÃO: Esse investimento deixará seu saldo negativo em R$ ${Math.abs(saldoFuturo).toFixed(2)} por mês. Não recomendado no momento.`;
-            } else if (saldoFuturo < (entradas * 0.1)) {
-                banner.className = "status-banner banner-atencao";
-                banner.innerText = `⚡ CUIDADO: É possível realizar o gasto, mas sua margem de segurança ficará muito baixa (menos de 10% da sua renda).`;
+            let mesRefBase = document.getElementById('mes-referencia').value || new Date().toISOString().slice(0, 7);
+            let [anoBase, mesBase] = mesRefBase.split('-').map(Number);
+            let valorParcela = valorTotalSim / numParcelasSim;
+
+            let projecao12Meses = [];
+            let mesesComDeficit = 0;
+            let menorSaldo = Infinity;
+            let mesCritico = "";
+
+            for (let i = 0; i < 12; i++) {
+                let d = new Date(anoBase, mesBase - 1 + i, 1);
+                let y = d.getFullYear();
+                let m = String(d.getMonth() + 1).padStart(2, '0');
+                let chaveMes = `financas_${y}-${m}`;
+
+                let dadosMes = JSON.parse(localStorage.getItem(chaveMes)) || [];
+                let ent = dadosMes.filter(item => item.tipo === 'entrada').reduce((acc, item) => acc + item.valor, 0);
+                let sai = dadosMes.filter(item => item.tipo === 'saida').reduce((acc, item) => acc + item.valor, 0);
+                let saldoPrevisto = ent - sai;
+
+                let aplicaParcela = i < numParcelasSim;
+                let parcelaMes = aplicaParcela ? valorParcela : 0;
+                let saldoFinal = saldoPrevisto - parcelaMes;
+
+                if (saldoFinal < 0) mesesComDeficit++;
+
+                if (saldoFinal < menorSaldo) {
+                    menorSaldo = saldoFinal;
+                    mesCritico = formatarNomeMes(`${y}-${m}`);
+                }
+
+                projecao12Meses.push({
+                    mesLabel: formatarNomeMes(`${y}-${m}`),
+                    saldoPrevisto,
+                    aplicaParcela,
+                    parcelaMes,
+                    saldoFinal
+                });
+            }
+
+            let duracaoAnalise = Math.min(numParcelasSim, 12);
+            let mesesSucesso = duracaoAnalise - mesesComDeficit;
+            let probabilidade = Math.max(0, Math.round((mesesSucesso / duracaoAnalise) * 100));
+
+            impactoEl.innerText = "R$ " + valorParcela.toFixed(2);
+            detalheTotalEl.innerText = `Total: R$ ${valorTotalSim.toFixed(2)} em ${numParcelasSim}x`;
+            menorSaldoEl.innerText = "R$ " + menorSaldo.toFixed(2);
+            menorSaldoEl.style.color = menorSaldo < 0 ? "#e74c3c" : "#27ae60";
+            mesCriticoEl.innerText = `Mês crítico: ${mesCritico}`;
+            probEl.innerText = `${probabilidade}%`;
+
+            tbodySim.innerHTML = "";
+            projecao12Meses.forEach(item => {
+                let statusTag = item.saldoFinal < 0 
+                    ? '<span class="badge-atraso">DÉFICIT</span>' 
+                    : '<span class="badge-risco badge-risco-baixo">OK</span>';
+
+                tbodySim.innerHTML += `<tr style="${item.saldoFinal < 0 ? 'background-color: #fff5f5;' : ''}">
+                    <td><strong>${item.mesLabel}</strong></td>
+                    <td style="color: ${item.saldoPrevisto < 0 ? '#e53e3e' : '#4a5568'};">R$ ${item.saldoPrevisto.toFixed(2)}</td>
+                    <td style="color: #c05621; font-weight: 500;">${item.aplicaParcela ? '- R$ ' + item.parcelaMes.toFixed(2) : 'R$ 0,00'}</td>
+                    <td style="font-weight: bold; color: ${item.saldoFinal < 0 ? '#e53e3e' : '#27ae60'};">R$ ${item.saldoFinal.toFixed(2)}</td>
+                    <td>${statusTag}</td>
+                </tr>`;
+            });
+
+            if (probabilidade >= 80) {
+                probEl.className = "text-green";
+                badgeEl.innerText = "Risco Baixo";
+                badgeEl.className = "badge-risco badge-risco-baixo";
+                bannerEl.className = "status-banner banner-sucesso";
+                bannerEl.innerText = `✅ VIÁVEL: A parcela de R$ ${valorParcela.toFixed(2)} cabe nas suas projeções sem negativar o orçamento.`;
+            } else if (probabilidade >= 50) {
+                probEl.className = "text-blue";
+                badgeEl.innerText = "Risco Médio";
+                badgeEl.className = "badge-risco badge-risco-medio";
+                bannerEl.className = "status-banner banner-atencao";
+                bannerEl.innerText = `⚡ ATENÇÃO: A compra é viável na maioria dos meses, mas causará saldo negativo em ${mesesComDeficit} mês(es).`;
             } else {
-                banner.className = "status-banner banner-sucesso";
-                banner.innerText = `✅ VIÁVEL: O investimento cabe no seu orçamento! Seu saldo mensal continuará positivo em R$ ${saldoFuturo.toFixed(2)}.`;
+                probEl.className = "text-red";
+                badgeEl.innerText = "Risco Alto";
+                badgeEl.className = "badge-risco badge-risco-alto";
+                bannerEl.className = "status-banner banner-perigo";
+                bannerEl.innerText = `⚠️ NÃO RECOMENDADO: Esta parcela deixará seu orçamento negativo em ${mesesComDeficit} dos ${duracaoAnalise} meses analisados.`;
             }
         }
 
