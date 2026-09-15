@@ -620,54 +620,6 @@
         let unsubscribe = null;
         let unsubscribeUsers = null;
 
-        async function criarUsuariosIniciais() {
-            try {
-                const colRef = collection(db, "usuarios");
-                const snapshot = await getDocs(colRef);
-                
-                if (snapshot.empty) {
-                    await setDoc(doc(db, "usuarios", "user_rafael"), {
-                        nome: "Rafael Baréa (Administrador)",
-                        senha: "145565"
-                    });
-                    await setDoc(doc(db, "usuarios", "user_sara"), {
-                        nome: "Sara Piaia",
-                        senha: "145565"
-                    });
-                }
-            } catch (e) {
-                console.log("Fallback ativo.");
-            }
-        }
-
-        async function migracaoAutomaticaSilenciosa() {
-            try {
-                for (let i = 0; i < localStorage.length; i++) {
-                    let key = localStorage.key(i);
-                    if (key && key.startsWith("financas_")) {
-                        let mesRef = key.replace("financas_", "");
-                        let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
-
-                        for (let item of dadosMes) {
-                            let docId = item.id || ('item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
-                            await setDoc(doc(db, "lancamentos", docId), {
-                                grupoId: item.grupoId || ('grupo_' + Date.now()),
-                                data: item.data || `${mesRef}-01`,
-                                categoria: item.categoria || 'Geral',
-                                tipo: item.tipo || 'saida',
-                                valor: parseFloat(item.valor) || 0,
-                                pago: !!item.pago,
-                                mesRef: item.data ? item.data.slice(0, 7) : mesRef
-                            }, { merge: true });
-                        }
-                        localStorage.removeItem(key); // Remove após sincronizar para não repetir
-                    }
-                }
-            } catch (err) {
-                console.error("Erro na sincronização automática em segundo plano:", err);
-            }
-        }
-
         function escutarBancoEmTempoReal() {
             if (unsubscribe) unsubscribe();
 
@@ -682,6 +634,8 @@
                 if (document.getElementById('pag-simulacao').classList.contains('active')) {
                     calcularSimulacao12Meses();
                 }
+            }, (error) => {
+                console.error("Erro ao sincronizar dados em tempo real:", error);
             });
         }
 
@@ -703,6 +657,8 @@
                 if (document.getElementById('pag-usuarios').classList.contains('active')) {
                     renderizarTabelaUsuarios();
                 }
+            }, (error) => {
+                console.error("Erro ao sincronizar usuários:", error);
             });
         }
 
@@ -765,49 +721,50 @@
 
             let novoGrupoId = 'grupo_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
 
-            if (tipo === 'saida' && qtdParcelas > 1) {
-                let [anoIni, mesIni, diaIni] = dataLancamento.split('-').map(Number);
-                let currAno = anoIni;
-                let currMes = mesIni;
+            try {
+                if (tipo === 'saida' && qtdParcelas > 1) {
+                    let [anoIni, mesIni, diaIni] = dataLancamento.split('-').map(Number);
+                    let currAno = anoIni;
+                    let currMes = mesIni;
 
-                for (let i = 0; i < qtdParcelas; i++) {
-                    let mesStr = `${currAno}-${String(currMes).padStart(2, '0')}`;
-                    let dataFinalParcela = `${mesStr}-${String(diaIni).padStart(2, '0')}`;
+                    for (let i = 0; i < qtdParcelas; i++) {
+                        let mesStr = `${currAno}-${String(currMes).padStart(2, '0')}`;
+                        let dataFinalParcela = `${mesStr}-${String(diaIni).padStart(2, '0')}`;
+                        let docId = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
+
+                        await setDoc(doc(db, "lancamentos", docId), {
+                            grupoId: novoGrupoId,
+                            data: dataFinalParcela,
+                            categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
+                            tipo, 
+                            valor: valorInformado,
+                            pago: false,
+                            mesRef: mesStr
+                        });
+
+                        currMes++;
+                        if (currMes > 12) {
+                            currMes = 1;
+                            currAno++;
+                        }
+                    }
+                } else {
                     let docId = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-
                     await setDoc(doc(db, "lancamentos", docId), {
                         grupoId: novoGrupoId,
-                        data: dataFinalParcela,
-                        categoria: `${categoria} (${i+1}/${qtdParcelas})`, 
+                        data: dataLancamento, 
+                        categoria, 
                         tipo, 
                         valor: valorInformado,
                         pago: false,
-                        mesRef: mesStr
+                        mesRef: mesDoLancamento
                     });
-
-                    currMes++;
-                    if (currMes > 12) {
-                        currMes = 1;
-                        currAno++;
-                    }
                 }
-
                 resetarFormulario();
-                return;
+            } catch (error) {
+                console.error("Erro ao salvar lançamento:", error);
+                alert("Erro ao salvar no banco de dados. Verifique sua conexão.");
             }
-
-            let docId = 'item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9);
-            await setDoc(doc(db, "lancamentos", docId), {
-                grupoId: novoGrupoId,
-                data: dataLancamento, 
-                categoria, 
-                tipo, 
-                valor: valorInformado,
-                pago: false,
-                mesRef: mesDoLancamento
-            });
-            
-            resetarFormulario();
         };
 
         window.removerGrupoDoBanco = async function(grupoId) {
@@ -838,12 +795,8 @@
             }
         };
 
-        (async () => {
-            await migracaoAutomaticaSilenciosa();
-            escutarBancoEmTempoReal();
-            await criarUsuariosIniciais();
-            escutarUsuariosEmTempoReal();
-        })();
+        escutarBancoEmTempoReal();
+        escutarUsuariosEmTempoReal();
     </script>
 
     <script>
@@ -1503,4 +1456,4 @@
         aoMudarMesReferencia();
     </script>
 </body>
-</html>
+</html>git add index.html
