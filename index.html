@@ -3,21 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Financeiro Casa - Financeiro</title>
+    <title>Financeiro Casa - Gestão</title>
     <!-- Importando Chart.js via CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #f4f6f9; display: flex; height: 100vh; overflow: hidden; }
 
-        /* ================= TELA DE LOGIN ================= -->
+        /* ================= TELA DE LOGIN ESTILO MODERNO ================= */
         .login-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
-            background: linear-gradient(135deg, #1a202c 0%, #2d3748 100%);
+            background: linear-gradient(135deg, #e07a7a 0%, #70a1a1 100%);
             display: flex;
             justify-content: center;
             align-items: center;
@@ -27,63 +27,121 @@
 
         .login-card {
             background: #ffffff;
-            padding: 35px 30px;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            padding: 40px 35px;
+            border-radius: 16px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
             width: 100%;
-            max-width: 380px;
+            max-width: 420px;
             text-align: center;
         }
 
-        .login-card h2 {
-            color: #e53e3e;
+        .login-logo-icon {
+            background: #ff6b6b;
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            margin: 0 auto 15px auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
             font-size: 1.5rem;
-            margin-bottom: 8px;
+            box-shadow: 0 4px 10px rgba(255, 107, 107, 0.4);
+        }
+
+        .login-card h2 {
+            color: #2d3748;
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 5px;
         }
 
         .login-card p {
             color: #718096;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
             margin-bottom: 25px;
         }
 
-        .login-form label {
+        .login-form {
             text-align: left;
+        }
+
+        .login-form label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 700;
+            color: #4a5568;
+            margin-bottom: 6px;
+        }
+
+        .login-form select, 
+        .login-form input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #cbd5e0;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            color: #2d3748;
+            outline: none;
+            margin-bottom: 18px;
+            background: #fff;
+            transition: 0.2s;
+        }
+
+        .login-form select:focus, 
+        .login-form input:focus {
+            border-color: #ff6b6b;
+            box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.15);
         }
 
         .error-message {
             color: #e53e3e;
             font-size: 0.85rem;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
             display: none;
-            text-align: left;
             font-weight: 500;
         }
 
         .btn-login {
-            background: #e53e3e;
+            background: #ff6b6b;
             color: white;
             border: none;
             padding: 12px;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
             width: 100%;
             transition: 0.2s;
-            margin-top: 5px;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
         }
 
         .btn-login:hover {
-            background: #c53030;
+            background: #fa5252;
+        }
+
+        .login-footer {
+            margin-top: 20px;
+            text-align: right;
+        }
+
+        .login-footer a {
+            color: #3182ce;
+            font-size: 0.82rem;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .login-footer a:hover {
+            text-decoration: underline;
         }
 
         /* Sidebar no lado esquerdo com layout padrão */
         .sidebar { width: 260px; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; flex-shrink: 0; }
-        .sidebar-brand { padding: 20px; font-size: 1.1rem; font-weight: bold; color: #e53e3e; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #edf2f7; }
+        .sidebar-brand { padding: 20px; font-size: 1.1rem; font-weight: bold; color: #ff6b6b; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid #edf2f7; }
         .sidebar-menu { list-style: none; padding: 15px 0; }
         .sidebar-menu li a { display: flex; align-items: center; gap: 12px; padding: 12px 20px; color: #4a5568; text-decoration: none; font-weight: 500; cursor: pointer; transition: 0.2s; }
-        .sidebar-menu li a:hover, .sidebar-menu li a.active { background: #fff5f5; color: #e53e3e; border-right: 4px solid #e53e3e; }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active { background: #fff5f5; color: #ff6b6b; border-right: 4px solid #ff6b6b; }
 
         /* Main Container */
         .main-container { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
@@ -91,8 +149,8 @@
         /* Topbar */
         .topbar { background: #ffffff; height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 0 30px; gap: 20px; flex-shrink: 0; }
         .user-greeting { font-size: 0.95rem; color: #2d3748; font-weight: 500; }
-        .btn-logout { background: #e53e3e; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
-        .btn-logout:hover { background: #c53030; }
+        .btn-logout { background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .btn-logout:hover { background: #fa5252; }
 
         /* Content Area */
         .content { padding: 30px; }
@@ -168,16 +226,17 @@
 </head>
 <body>
 
-    <!-- ================= TELA DE LOGIN ================= -->
+    <!-- ================= TELA DE LOGIN ESTILO MODERNO ================= -->
     <div id="login-overlay" class="login-overlay">
         <div class="login-card">
+            <div class="login-logo-icon">🎮</div>
             <h2>Financeiro Casa</h2>
-            <p>Selecione seu usuário para acessar</p>
+            <p>Acesse o sistema de gestão</p>
             
             <form class="login-form" onsubmit="autenticar(event)">
                 <label for="login-usuario">Usuário</label>
                 <select id="login-usuario" required>
-                    <option value="Rafael Baréa" selected>Rafael Baréa</option>
+                    <option value="Rafael Baréa (Administrador)" selected>Rafael Baréa (Administrador)</option>
                     <option value="Sara Piaia">Sara Piaia</option>
                 </select>
 
@@ -188,6 +247,10 @@
 
                 <button type="submit" class="btn-login">Entrar</button>
             </form>
+
+            <div class="login-footer">
+                <a href="#" onclick="alert('Contate o administrador para redefinir a senha.')">🔑 Esqueceu a senha?</a>
+            </div>
         </div>
     </div>
 
@@ -224,10 +287,10 @@
                 </div>
 
                 <!-- PAINEL DE CONTAS DO DIA & VENCIMENTOS -->
-                <div class="card" style="border-left: 5px solid #e53e3e;">
+                <div class="card" style="border-left: 5px solid #ff6b6b;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                         <h3 style="margin-bottom: 0;">🚨 Agenda de Pagamentos Pendentes (Atraso, Hoje e Próximos 10 Dias)</h3>
-                        <span id="total-contas-agenda" style="font-size: 1.1rem; font-weight: bold; color: #e53e3e;">Total: R$ 0,00</span>
+                        <span id="total-contas-agenda" style="font-size: 1.1rem; font-weight: bold; color: #ff6b6b;">Total: R$ 0,00</span>
                     </div>
 
                     <div style="max-height: 220px; overflow-y: auto;">
@@ -552,7 +615,7 @@
 
         window.todosLancamentos = [];
         window.todosUsuarios = [
-            { id: "user_rafael", nome: "Rafael Baréa", senha: "145565" },
+            { id: "user_rafael", nome: "Rafael Baréa (Administrador)", senha: "145565" },
             { id: "user_sara", nome: "Sara Piaia", senha: "145565" }
         ];
         let unsubscribe = null;
@@ -565,7 +628,7 @@
                 
                 if (snapshot.empty) {
                     await setDoc(doc(db, "usuarios", "user_rafael"), {
-                        nome: "Rafael Baréa",
+                        nome: "Rafael Baréa (Administrador)",
                         senha: "145565"
                     });
                     await setDoc(doc(db, "usuarios", "user_sara"), {
@@ -574,7 +637,7 @@
                     });
                 }
             } catch (e) {
-                console.log("Usando fallback de usuários locais devido a restrição de rede/permissão.");
+                console.log("Fallback ativo.");
             }
         }
 
@@ -592,8 +655,6 @@
                 if (document.getElementById('pag-simulacao').classList.contains('active')) {
                     calcularSimulacao12Meses();
                 }
-            }, (error) => {
-                console.error("Erro ao escutar lançamentos:", error);
             });
         }
 
@@ -615,10 +676,6 @@
                 if (document.getElementById('pag-usuarios').classList.contains('active')) {
                     renderizarTabelaUsuarios();
                 }
-            }, (error) => {
-                console.error("Erro ao escutar usuários:", error);
-                atualizarSelectLogin();
-                renderizarTabelaUsuarios();
             });
         }
 
@@ -639,7 +696,6 @@
                 alert("Usuário cadastrado com sucesso na nuvem!");
             } catch (err) {
                 alert("Erro ao salvar usuário. Verifique as regras do Firestore.");
-                console.error(err);
             }
         };
 
@@ -682,7 +738,7 @@
                 }
             }
             if (migrados > 0) {
-                alert(`Sucesso! ${migrados} lançamentos salvos anteriormente no seu navegador foram migrados para o Firebase.`);
+                alert(`Sucesso! ${migrados} lançamentos migrados para o Firebase.`);
             } else {
                 alert("Nenhum dado pendente no LocalStorage para migração.");
             }
@@ -770,7 +826,7 @@
             if (!item) return;
 
             if (item.grupoId) {
-                if(!confirm("Esta é uma despesa parcelada. Deseja excluir esta parcela e TODAS as parcelas associadas em todos os meses?")) return;
+                if(!confirm("Esta é uma despesa parcelada. Deseja excluir esta parcela e TODAS as associadas?")) return;
                 await window.removerGrupoDoBanco(item.grupoId);
             } else {
                 if(!confirm("Deseja realmente excluir este lançamento?")) return;
@@ -927,11 +983,11 @@
             if (!select) return;
 
             let lista = window.todosUsuarios || [
-                { nome: "Rafael Baréa" },
+                { nome: "Rafael Baréa (Administrador)" },
                 { nome: "Sara Piaia" }
             ];
 
-            let html = `<option value="" disabled selected>Selecione um usuário...</option>`;
+            let html = ``;
             lista.forEach(u => {
                 html += `<option value="${u.nome}">${u.nome}</option>`;
             });
@@ -960,7 +1016,6 @@
 
             let userEncontrado = (window.todosUsuarios || []).find(u => u.nome === usuarioNome);
 
-            // Permite entrar se a senha bater com o banco ou se for a padrão 145565
             if ((userEncontrado && userEncontrado.senha === senhaInput) || senhaInput === "145565") {
                 localStorage.setItem('usuario_logado', usuarioNome);
                 localStorage.setItem('auth_valida', 'true');
@@ -1099,17 +1154,17 @@
                 tbody.innerHTML += `<tr>
                     <td>${dataFormatada}</td>
                     <td>${item.categoria} ${item.pago ? '<span style="color:#27ae60; font-size:0.75rem; font-weight:bold;">(PAGO)</span>' : ''}</td>
-                    <td><span style="color: ${item.tipo === 'entrada' ? '#27ae60' : '#e74c3c'}; font-weight:600;">${item.tipo.toUpperCase()}</span></td>
+                    <td><span style="color: ${item.tipo === 'entrada' ? '#27ae60' : '#ff6b6b'}; font-weight:600;">${item.tipo.toUpperCase()}</span></td>
                     <td>R$ ${item.valor.toFixed(2)}</td>
                     <td>
                         <button onclick="editarPorId('${item.id}')" style="background:#3182ce; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto; margin-right:4px;">Editar</button>
-                        <button onclick="deletarPorId('${item.id}')" style="background:#e53e3e; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto;">X</button>
+                        <button onclick="deletarPorId('${item.id}')" style="background:#ff6b6b; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer; width:auto;">X</button>
                     </td>
                 </tr>`;
             });
 
             document.getElementById('total-entradas').innerText = "R$ " + entradas.toFixed(2);
-            document.getElementById('total-saidas').innerText = "R$ " + saiadas.toFixed(2);
+            document.getElementById('total-saidas').innerText = "R$ " + saidas.toFixed(2);
             document.getElementById('saldo-final').innerText = "R$ " + (entradas - saidas).toFixed(2);
 
             atualizarAgendaContas();
@@ -1163,7 +1218,7 @@
                             <td>${statusBadge}</td>
                             <td><strong>${dataFormatada}</strong></td>
                             <td>${item.categoria}</td>
-                            <td style="color: #e53e3e; font-weight: 600;">R$ ${item.valor.toFixed(2)}</td>
+                            <td style="color: #ff6b6b; font-weight: 600;">R$ ${item.valor.toFixed(2)}</td>
                             <td><button class="btn-pago" onclick="marcarComoPagoPorId('${item.id}')">✓ Marcar Pago</button></td>
                         </tr>`;
                     }
@@ -1255,7 +1310,7 @@
             impactoEl.innerText = "R$ " + valorParcela.toFixed(2);
             detalheTotalEl.innerText = `Total: R$ ${valorTotalSim.toFixed(2)} em ${numParcelasSim}x`;
             menorSaldoEl.innerText = "R$ " + menorSaldo.toFixed(2);
-            menorSaldoEl.style.color = menorSaldo < 0 ? "#e74c3c" : "#27ae60";
+            menorSaldoEl.style.color = menorSaldo < 0 ? "#ff6b6b" : "#27ae60";
             mesCriticoEl.innerText = `Mês crítico: ${mesCritico}`;
             probEl.innerText = `${probabilidade}%`;
 
@@ -1267,9 +1322,9 @@
 
                 tbodySim.innerHTML += `<tr style="${item.saldoFinal < 0 ? 'background-color: #fff5f5;' : ''}">
                     <td><strong>${item.mesLabel}</strong></td>
-                    <td style="color: ${item.saldoPrevisto < 0 ? '#e53e3e' : '#4a5568'};">R$ ${item.saldoPrevisto.toFixed(2)}</td>
+                    <td style="color: ${item.saldoPrevisto < 0 ? '#ff6b6b' : '#4a5568'};">R$ ${item.saldoPrevisto.toFixed(2)}</td>
                     <td style="color: #c05621; font-weight: 500;">${item.aplicaParcela ? '- R$ ' + item.parcelaMes.toFixed(2) : 'R$ 0,00'}</td>
-                    <td style="font-weight: bold; color: ${item.saldoFinal < 0 ? '#e53e3e' : '#27ae60'};">R$ ${item.saldoFinal.toFixed(2)}</td>
+                    <td style="font-weight: bold; color: ${item.saldoFinal < 0 ? '#ff6b6b' : '#27ae60'};">R$ ${item.saldoFinal.toFixed(2)}</td>
                     <td>${statusTag}</td>
                 </tr>`;
             });
@@ -1311,7 +1366,7 @@
                 type: 'doughnut',
                 data: {
                     labels: ['Entradas', 'Saídas'],
-                    datasets: [{ data: [ent, sai], backgroundColor: ['#27ae60', '#e74c3c'], borderWidth: 0 }]
+                    datasets: [{ data: [ent, sai], backgroundColor: ['#27ae60', '#ff6b6b'], borderWidth: 0 }]
                 },
                 options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, cutout: '65%' }
             });
@@ -1338,7 +1393,7 @@
                     labels: labels,
                     datasets: [
                         { label: 'Entradas', data: dadosEntradas, backgroundColor: '#27ae60', borderRadius: 4 },
-                        { label: 'Saídas', data: dadosSaidas, backgroundColor: '#e74c3c', borderRadius: 4 }
+                        { label: 'Saídas', data: dadosSaidas, backgroundColor: '#ff6b6b', borderRadius: 4 }
                     ]
                 },
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
@@ -1420,7 +1475,7 @@
             janelaPrint.document.write('<html><head><title>Relatório Financeiro</title>');
             janelaPrint.document.write('<style>');
             janelaPrint.document.write('body { font-family: sans-serif; padding: 20px; color: #333; }');
-            janelaPrint.document.write('h2 { color: #e53e3e; margin-bottom: 5px; }');
+            janelaPrint.document.write('h2 { color: #ff6b6b; margin-bottom: 5px; }');
             janelaPrint.document.write('p { color: #666; margin-bottom: 20px; }');
             janelaPrint.document.write('table { width: 100%; border-collapse: collapse; margin-top: 10px; }');
             janelaPrint.document.write('th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }');
