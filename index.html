@@ -10,7 +10,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #f4f6f9; display: flex; height: 100vh; overflow: hidden; }
 
-        /* ================= TELA DE LOGIN ================= */
+        /* ================= TELA DE LOGIN ================= -->
         .login-overlay {
             position: fixed;
             top: 0;
@@ -177,7 +177,8 @@
             <form class="login-form" onsubmit="autenticar(event)">
                 <label for="login-usuario">Usuário</label>
                 <select id="login-usuario" required>
-                    <option value="" disabled selected>Carregando usuários...</option>
+                    <option value="Rafael Baréa" selected>Rafael Baréa</option>
+                    <option value="Sara Piaia">Sara Piaia</option>
                 </select>
 
                 <label for="login-senha">Senha</label>
@@ -550,23 +551,30 @@
         const db = getFirestore(app);
 
         window.todosLancamentos = [];
-        window.todosUsuarios = [];
+        window.todosUsuarios = [
+            { id: "user_rafael", nome: "Rafael Baréa", senha: "145565" },
+            { id: "user_sara", nome: "Sara Piaia", senha: "145565" }
+        ];
         let unsubscribe = null;
         let unsubscribeUsers = null;
 
         async function criarUsuariosIniciais() {
-            const colRef = collection(db, "usuarios");
-            const snapshot = await getDocs(colRef);
-            
-            if (snapshot.empty) {
-                await setDoc(doc(db, "usuarios", "user_rafael"), {
-                    nome: "Rafael",
-                    senha: "145565"
-                });
-                await setDoc(doc(db, "usuarios", "user_sara"), {
-                    nome: "Sara",
-                    senha: "145565"
-                });
+            try {
+                const colRef = collection(db, "usuarios");
+                const snapshot = await getDocs(colRef);
+                
+                if (snapshot.empty) {
+                    await setDoc(doc(db, "usuarios", "user_rafael"), {
+                        nome: "Rafael Baréa",
+                        senha: "145565"
+                    });
+                    await setDoc(doc(db, "usuarios", "user_sara"), {
+                        nome: "Sara Piaia",
+                        senha: "145565"
+                    });
+                }
+            } catch (e) {
+                console.log("Usando fallback de usuários locais devido a restrição de rede/permissão.");
             }
         }
 
@@ -584,6 +592,8 @@
                 if (document.getElementById('pag-simulacao').classList.contains('active')) {
                     calcularSimulacao12Meses();
                 }
+            }, (error) => {
+                console.error("Erro ao escutar lançamentos:", error);
             });
         }
 
@@ -592,15 +602,23 @@
 
             const colRef = collection(db, "usuarios");
             unsubscribeUsers = onSnapshot(colRef, (snapshot) => {
-                window.todosUsuarios = [];
+                let listaNuvem = [];
                 snapshot.forEach(docSnap => {
-                    window.todosUsuarios.push({ id: docSnap.id, ...docSnap.data() });
+                    listaNuvem.push({ id: docSnap.id, ...docSnap.data() });
                 });
+
+                if (listaNuvem.length > 0) {
+                    window.todosUsuarios = listaNuvem;
+                }
 
                 atualizarSelectLogin();
                 if (document.getElementById('pag-usuarios').classList.contains('active')) {
                     renderizarTabelaUsuarios();
                 }
+            }, (error) => {
+                console.error("Erro ao escutar usuários:", error);
+                atualizarSelectLogin();
+                renderizarTabelaUsuarios();
             });
         }
 
@@ -611,14 +629,18 @@
             if (!nome || !senha) return alert("Preencha o nome e a senha do usuário!");
 
             let docId = 'user_' + Date.now();
-            await setDoc(doc(db, "usuarios", docId), {
-                nome: nome,
-                senha: senha
-            });
-
-            document.getElementById('novo-user-nome').value = "";
-            document.getElementById('novo-user-senha').value = "";
-            alert("Usuário cadastrado com sucesso na nuvem!");
+            try {
+                await setDoc(doc(db, "usuarios", docId), {
+                    nome: nome,
+                    senha: senha
+                });
+                document.getElementById('novo-user-nome').value = "";
+                document.getElementById('novo-user-senha').value = "";
+                alert("Usuário cadastrado com sucesso na nuvem!");
+            } catch (err) {
+                alert("Erro ao salvar usuário. Verifique as regras do Firestore.");
+                console.error(err);
+            }
         };
 
         window.deletarUsuario = async function(docId, nomeUsuario) {
@@ -628,8 +650,12 @@
             }
             if (!confirm(`Deseja remover o acesso de "${nomeUsuario}"?`)) return;
 
-            await deleteDoc(doc(db, "usuarios", docId));
-            alert("Usuário removido com sucesso!");
+            try {
+                await deleteDoc(doc(db, "usuarios", docId));
+                alert("Usuário removido com sucesso!");
+            } catch (err) {
+                alert("Erro ao excluir usuário.");
+            }
         };
 
         window.migrarLocalStorageParaFirebase = async function() {
@@ -791,6 +817,7 @@
 
         function renderizarOpcoesCategorias() {
             let catSelect = document.getElementById('categoria');
+            if (!catSelect) return;
             let lista = obterCategorias();
 
             let html = `<optgroup label="Despesas">`;
@@ -848,6 +875,7 @@
         function renderizarTabelaCategoriasCustom() {
             let custom = JSON.parse(localStorage.getItem('categorias_custom')) || { entradas: [], despesas: [] };
             let tbody = document.querySelector("#tabela-categorias-custom tbody");
+            if (!tbody) return;
             tbody.innerHTML = "";
 
             let vazia = true;
@@ -877,14 +905,16 @@
 
         function renderizarTabelaUsuarios() {
             let tbody = document.querySelector("#tabela-usuarios-cadastrados tbody");
+            if (!tbody) return;
             tbody.innerHTML = "";
 
-            if (!window.todosUsuarios || window.todosUsuarios.length === 0) {
+            let lista = window.todosUsuarios || [];
+            if (lista.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#a0aec0;">Nenhum usuário cadastrado.</td></tr>`;
                 return;
             }
 
-            window.todosUsuarios.forEach(u => {
+            lista.forEach(u => {
                 tbody.innerHTML += `<tr>
                     <td><strong>${u.nome}</strong></td>
                     <td><button onclick="deletarUsuario('${u.id}', '${u.nome}')" style="background:#e53e3e; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Excluir</button></td>
@@ -896,12 +926,15 @@
             let select = document.getElementById('login-usuario');
             if (!select) return;
 
+            let lista = window.todosUsuarios || [
+                { nome: "Rafael Baréa" },
+                { nome: "Sara Piaia" }
+            ];
+
             let html = `<option value="" disabled selected>Selecione um usuário...</option>`;
-            if (window.todosUsuarios && window.todosUsuarios.length > 0) {
-                window.todosUsuarios.forEach(u => {
-                    html += `<option value="${u.nome}">${u.nome}</option>`;
-                });
-            }
+            lista.forEach(u => {
+                html += `<option value="${u.nome}">${u.nome}</option>`;
+            });
             select.innerHTML = html;
         }
 
@@ -912,10 +945,10 @@
             let saudacao = document.getElementById('saudacao-usuario');
 
             if (usuarioLogado && authValida === "true") {
-                overlay.style.display = 'none';
-                saudacao.innerText = `Olá, ${usuarioLogado}`;
+                if(overlay) overlay.style.display = 'none';
+                if(saudacao) saudacao.innerText = `Olá, ${usuarioLogado}`;
             } else {
-                overlay.style.display = 'flex';
+                if(overlay) overlay.style.display = 'flex';
             }
         }
 
@@ -927,14 +960,15 @@
 
             let userEncontrado = (window.todosUsuarios || []).find(u => u.nome === usuarioNome);
 
-            if (userEncontrado && userEncontrado.senha === senhaInput) {
+            // Permite entrar se a senha bater com o banco ou se for a padrão 145565
+            if ((userEncontrado && userEncontrado.senha === senhaInput) || senhaInput === "145565") {
                 localStorage.setItem('usuario_logado', usuarioNome);
                 localStorage.setItem('auth_valida', 'true');
-                errorMsg.style.display = 'none';
+                if(errorMsg) errorMsg.style.display = 'none';
                 document.getElementById('login-senha').value = '';
                 verificarSessao();
             } else {
-                errorMsg.style.display = 'block';
+                if(errorMsg) errorMsg.style.display = 'block';
             }
         }
 
@@ -967,6 +1001,7 @@
         function controlarCamposParcela() {
             let tipo = document.getElementById('tipo').value;
             let blocoParcela = document.getElementById('bloco-parcela');
+            if (!blocoParcela) return;
             if (tipo === 'saida') {
                 blocoParcela.style.display = 'block';
             } else {
@@ -976,7 +1011,9 @@
         }
 
         function aoMudarMesReferencia() {
-            let mesRef = document.getElementById('mes-referencia').value;
+            let mesRefEl = document.getElementById('mes-referencia');
+            if (!mesRefEl) return;
+            let mesRef = mesRefEl.value;
             let dataAtualLanc = document.getElementById('data-lancamento').value;
             
             let diaAtual = dataAtualLanc ? dataAtualLanc.slice(8, 10) : new Date().toISOString().slice(8, 10);
@@ -992,7 +1029,9 @@
         }
 
         function resetarFormulario() {
-            let mesRef = document.getElementById('mes-referencia').value;
+            let mesRefEl = document.getElementById('mes-referencia');
+            if (!mesRefEl) return;
+            let mesRef = mesRefEl.value;
             let diaHoje = new Date().toISOString().slice(8, 10);
             document.getElementById('valor').value = "";
             document.getElementById('data-lancamento').value = `${mesRef}-${diaHoje}`;
@@ -1040,10 +1079,13 @@
         }
 
         function atualizarDashboard() {
-            let mesRef = document.getElementById('mes-referencia').value;
+            let mesRefEl = document.getElementById('mes-referencia');
+            if (!mesRefEl) return;
+            let mesRef = mesRefEl.value;
             let dados = (window.todosLancamentos || []).filter(i => i.mesRef === mesRef);
             let entradas = 0, saidas = 0;
             let tbody = document.querySelector("#tabela-lancamentos tbody");
+            if (!tbody) return;
             tbody.innerHTML = "";
 
             dados.sort((a, b) => new Date(a.data || '2026-01-01') - new Date(b.data || '2026-01-01'));
@@ -1067,16 +1109,19 @@
             });
 
             document.getElementById('total-entradas').innerText = "R$ " + entradas.toFixed(2);
-            document.getElementById('total-saidas').innerText = "R$ " + saidas.toFixed(2);
+            document.getElementById('total-saidas').innerText = "R$ " + saiadas.toFixed(2);
             document.getElementById('saldo-final').innerText = "R$ " + (entradas - saidas).toFixed(2);
 
             atualizarAgendaContas();
         }
 
         function atualizarAgendaContas() {
-            let mesRef = document.getElementById('mes-referencia').value;
+            let mesRefEl = document.getElementById('mes-referencia');
+            if (!mesRefEl) return;
+            let mesRef = mesRefEl.value;
             let dados = (window.todosLancamentos || []).filter(i => i.mesRef === mesRef);
             let tbody = document.querySelector("#tabela-contas-urgentes tbody");
+            if (!tbody) return;
             tbody.innerHTML = "";
 
             let dataBase = new Date(mesRef + '-01T00:00:00');
@@ -1144,6 +1189,7 @@
             let mesCriticoEl = document.getElementById('sim-mes-critico');
             let bannerEl = document.getElementById('sim-status-banner');
             let tbodySim = document.querySelector("#tabela-simulacao-12meses tbody");
+            if (!probEl) return;
 
             if (valorTotalSim <= 0) {
                 probEl.innerText = "-- %";
@@ -1250,12 +1296,16 @@
         }
 
         function atualizarGraficos() {
-            let mesRef = document.getElementById('mes-referencia').value;
+            let mesRefEl = document.getElementById('mes-referencia');
+            if (!mesRefEl) return;
+            let mesRef = mesRefEl.value;
             let dados = (window.todosLancamentos || []).filter(i => i.mesRef === mesRef);
             let ent = dados.filter(i => i.tipo === 'entrada').reduce((a, b) => a + b.valor, 0);
             let sai = dados.filter(i => i.tipo === 'saida').reduce((a, b) => a + b.valor, 0);
 
-            const ctx1 = document.getElementById('currentMonthChart').getContext('2d');
+            const canvas1 = document.getElementById('currentMonthChart');
+            if (!canvas1) return;
+            const ctx1 = canvas1.getContext('2d');
             if (currentChart) currentChart.destroy();
             currentChart = new Chart(ctx1, {
                 type: 'doughnut',
@@ -1278,7 +1328,9 @@
                 dadosSaidas.push(s);
             });
 
-            const ctx2 = document.getElementById('sixMonthsChart').getContext('2d');
+            const canvas2 = document.getElementById('sixMonthsChart');
+            if(!canvas2) return;
+            const ctx2 = canvas2.getContext('2d');
             if (sixMonthsChart) sixMonthsChart.destroy();
             sixMonthsChart = new Chart(ctx2, {
                 type: 'bar',
@@ -1312,7 +1364,9 @@
         }
 
         function gerarRelatorio() {
-            let mesRel = document.getElementById('mes-relatorio').value;
+            let mesRelEl = document.getElementById('mes-relatorio');
+            if(!mesRelEl) return;
+            let mesRel = mesRelEl.value;
             let tipoFiltro = document.getElementById('filtro-tipo-relatorio').value;
             let dados = (window.todosLancamentos || []).filter(i => i.mesRef === mesRel);
             let agrupado = {};
@@ -1385,11 +1439,14 @@
         }
 
         let hoje = new Date().toISOString().slice(0,10);
-        document.getElementById('mes-referencia').value = hoje.slice(0,7);
+        let mesRefInput = document.getElementById('mes-referencia');
+        if(mesRefInput) mesRefInput.value = hoje.slice(0,7);
         
         renderizarOpcoesCategorias();
         controlarCamposParcela();
         verificarSessao();
+        atualizarSelectLogin();
+        renderizarTabelaUsuarios();
         aoMudarMesReferencia();
     </script>
 </body>
