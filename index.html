@@ -283,7 +283,6 @@
                         <label>Orçamento do Mês:</label>
                         <input type="month" id="mes-referencia" onchange="aoMudarMesReferencia()" style="width: auto; margin-bottom: 0;">
                     </div>
-                    <button class="btn-excel" onclick="migrarLocalStorageParaFirebase()" style="background: #3182ce;">🔄 Sincronizar Meus Dados Locais para Nuvem</button>
                 </div>
 
                 <!-- PAINEL DE CONTAS DO DIA & VENCIMENTOS -->
@@ -641,6 +640,34 @@
             }
         }
 
+        async function migracaoAutomaticaSilenciosa() {
+            try {
+                for (let i = 0; i < localStorage.length; i++) {
+                    let key = localStorage.key(i);
+                    if (key && key.startsWith("financas_")) {
+                        let mesRef = key.replace("financas_", "");
+                        let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
+
+                        for (let item of dadosMes) {
+                            let docId = item.id || ('item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
+                            await setDoc(doc(db, "lancamentos", docId), {
+                                grupoId: item.grupoId || ('grupo_' + Date.now()),
+                                data: item.data || `${mesRef}-01`,
+                                categoria: item.categoria || 'Geral',
+                                tipo: item.tipo || 'saida',
+                                valor: parseFloat(item.valor) || 0,
+                                pago: !!item.pago,
+                                mesRef: item.data ? item.data.slice(0, 7) : mesRef
+                            }, { merge: true });
+                        }
+                        localStorage.removeItem(key); // Remove após sincronizar para não repetir
+                    }
+                }
+            } catch (err) {
+                console.error("Erro na sincronização automática em segundo plano:", err);
+            }
+        }
+
         function escutarBancoEmTempoReal() {
             if (unsubscribe) unsubscribe();
 
@@ -711,36 +738,6 @@
                 alert("Usuário removido com sucesso!");
             } catch (err) {
                 alert("Erro ao excluir usuário.");
-            }
-        };
-
-        window.migrarLocalStorageParaFirebase = async function() {
-            let migrados = 0;
-            for (let i = 0; i < localStorage.length; i++) {
-                let key = localStorage.key(i);
-                if (key && key.startsWith("financas_")) {
-                    let mesRef = key.replace("financas_", "");
-                    let dadosMes = JSON.parse(localStorage.getItem(key)) || [];
-
-                    for (let item of dadosMes) {
-                        let docId = item.id || ('item_' + Date.now() + '_' + Math.random().toString(36).substring(2, 9));
-                        await setDoc(doc(db, "lancamentos", docId), {
-                            grupoId: item.grupoId || ('grupo_' + Date.now()),
-                            data: item.data || `${mesRef}-01`,
-                            categoria: item.categoria || 'Geral',
-                            tipo: item.tipo || 'saida',
-                            valor: parseFloat(item.valor) || 0,
-                            pago: !!item.pago,
-                            mesRef: item.data ? item.data.slice(0, 7) : mesRef
-                        }, { merge: true });
-                        migrados++;
-                    }
-                }
-            }
-            if (migrados > 0) {
-                alert(`Sucesso! ${migrados} lançamentos migrados para o Firebase.`);
-            } else {
-                alert("Nenhum dado pendente no LocalStorage para migração.");
             }
         };
 
@@ -842,6 +839,7 @@
         };
 
         (async () => {
+            await migracaoAutomaticaSilenciosa();
             escutarBancoEmTempoReal();
             await criarUsuariosIniciais();
             escutarUsuariosEmTempoReal();
