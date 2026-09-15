@@ -177,15 +177,13 @@
             <form class="login-form" onsubmit="autenticar(event)">
                 <label for="login-usuario">Usuário</label>
                 <select id="login-usuario" required>
-                    <option value="" disabled selected>Selecione um usuário...</option>
-                    <option value="Rafael Baréa">Rafael Baréa</option>
-                    <option value="Sara Piaia">Sara Piaia</option>
+                    <option value="" disabled selected>Carregando usuários...</option>
                 </select>
 
                 <label for="login-senha">Senha</label>
                 <input type="password" id="login-senha" placeholder="Digite sua senha" required>
 
-                <div id="error-msg" class="error-message">Senha incorreta!</div>
+                <div id="error-msg" class="error-message">Usuário ou senha incorretos!</div>
 
                 <button type="submit" class="btn-login">Entrar</button>
             </form>
@@ -200,7 +198,8 @@
             <li><a onclick="switchPage('pag-graficos', this)">📈 Gráficos</a></li>
             <li><a onclick="switchPage('pag-simulacao', this)">💡 Simulação / Investimento</a></li>
             <li><a onclick="switchPage('pag-relatorios', this)">📄 Relatórios</a></li>
-            <li><a onclick="switchPage('pag-configuracoes', this)">⚙️ Configurações</a></li>
+            <li><a onclick="switchPage('pag-configuracoes', this)">⚙️ Categorias</a></li>
+            <li><a onclick="switchPage('pag-usuarios', this)">👥 Usuários</a></li>
         </ul>
     </div>
 
@@ -498,6 +497,37 @@
                 </div>
             </div>
 
+            <!-- 6. PÁGINA: GERENCIAR USUÁRIOS -->
+            <div id="pag-usuarios" class="page">
+                <div class="grid-2">
+                    <div class="card">
+                        <h3>Cadastrar Novo Usuário</h3>
+                        <label>Nome do Usuário</label>
+                        <input type="text" id="novo-user-nome" placeholder="Ex: Rafael, Sara...">
+
+                        <label>Senha de Acesso</label>
+                        <input type="password" id="novo-user-senha" placeholder="Digite a senha">
+
+                        <button class="btn-primary" onclick="cadastrarNovoUsuario()">Salvar Usuário</button>
+                    </div>
+
+                    <div class="card">
+                        <h3>Usuários com Acesso ao Sistema</h3>
+                        <div style="max-height: 300px; overflow-y: auto;">
+                            <table id="tabela-usuarios-cadastrados">
+                                <thead>
+                                    <tr>
+                                        <th>Usuário</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -520,9 +550,26 @@
         const db = getFirestore(app);
 
         window.todosLancamentos = [];
+        window.todosUsuarios = [];
         let unsubscribe = null;
+        let unsubscribeUsers = null;
 
-        // Função de Escuta em Tempo Real do Banco de Dados
+        async function criarUsuariosIniciais() {
+            const colRef = collection(db, "usuarios");
+            const snapshot = await getDocs(colRef);
+            
+            if (snapshot.empty) {
+                await setDoc(doc(db, "usuarios", "user_rafael"), {
+                    nome: "Rafael",
+                    senha: "145565"
+                });
+                await setDoc(doc(db, "usuarios", "user_sara"), {
+                    nome: "Sara",
+                    senha: "145565"
+                });
+            }
+        }
+
         function escutarBancoEmTempoReal() {
             if (unsubscribe) unsubscribe();
 
@@ -540,7 +587,51 @@
             });
         }
 
-        // ROTINA PARA MIGRAR OS DADOS SALVOS NO LOCALSTORAGE PARA O FIREBASE
+        function escutarUsuariosEmTempoReal() {
+            if (unsubscribeUsers) unsubscribeUsers();
+
+            const colRef = collection(db, "usuarios");
+            unsubscribeUsers = onSnapshot(colRef, (snapshot) => {
+                window.todosUsuarios = [];
+                snapshot.forEach(docSnap => {
+                    window.todosUsuarios.push({ id: docSnap.id, ...docSnap.data() });
+                });
+
+                atualizarSelectLogin();
+                if (document.getElementById('pag-usuarios').classList.contains('active')) {
+                    renderizarTabelaUsuarios();
+                }
+            });
+        }
+
+        window.cadastrarNovoUsuario = async function() {
+            let nome = document.getElementById('novo-user-nome').value.trim();
+            let senha = document.getElementById('novo-user-senha').value.trim();
+
+            if (!nome || !senha) return alert("Preencha o nome e a senha do usuário!");
+
+            let docId = 'user_' + Date.now();
+            await setDoc(doc(db, "usuarios", docId), {
+                nome: nome,
+                senha: senha
+            });
+
+            document.getElementById('novo-user-nome').value = "";
+            document.getElementById('novo-user-senha').value = "";
+            alert("Usuário cadastrado com sucesso na nuvem!");
+        };
+
+        window.deletarUsuario = async function(docId, nomeUsuario) {
+            let usuarioLogado = localStorage.getItem('usuario_logado');
+            if (usuarioLogado === nomeUsuario) {
+                return alert("Você não pode excluir o usuário que está atualmente logado!");
+            }
+            if (!confirm(`Deseja remover o acesso de "${nomeUsuario}"?`)) return;
+
+            await deleteDoc(doc(db, "usuarios", docId));
+            alert("Usuário removido com sucesso!");
+        };
+
         window.migrarLocalStorageParaFirebase = async function() {
             let migrados = 0;
             for (let i = 0; i < localStorage.length; i++) {
@@ -565,7 +656,7 @@
                 }
             }
             if (migrados > 0) {
-                alert(`Sucesso! ${migrados} lançamentos salvos anteriormente no seu navegador foram migrados para o Firebase. Agora a Sara conseguirá visualizar tudo no aparelho dela!`);
+                alert(`Sucesso! ${migrados} lançamentos salvos anteriormente no seu navegador foram migrados para o Firebase.`);
             } else {
                 alert("Nenhum dado pendente no LocalStorage para migração.");
             }
@@ -584,7 +675,6 @@
             if(!valorInformado || isNaN(valorInformado)) return alert("Digite um valor válido!");
 
             let mesDoLancamento = dataLancamento.slice(0, 7);
-            let diaDoLancamento = dataLancamento.slice(8, 10);
 
             if (editId !== "") {
                 if (editGrupoId) {
@@ -669,7 +759,11 @@
             }
         };
 
-        escutarBancoEmTempoReal();
+        (async () => {
+            escutarBancoEmTempoReal();
+            await criarUsuariosIniciais();
+            escutarUsuariosEmTempoReal();
+        })();
     </script>
 
     <script>
@@ -781,6 +875,36 @@
             }
         }
 
+        function renderizarTabelaUsuarios() {
+            let tbody = document.querySelector("#tabela-usuarios-cadastrados tbody");
+            tbody.innerHTML = "";
+
+            if (!window.todosUsuarios || window.todosUsuarios.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="2" style="text-align:center; color:#a0aec0;">Nenhum usuário cadastrado.</td></tr>`;
+                return;
+            }
+
+            window.todosUsuarios.forEach(u => {
+                tbody.innerHTML += `<tr>
+                    <td><strong>${u.nome}</strong></td>
+                    <td><button onclick="deletarUsuario('${u.id}', '${u.nome}')" style="background:#e53e3e; color:white; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Excluir</button></td>
+                </tr>`;
+            });
+        }
+
+        function atualizarSelectLogin() {
+            let select = document.getElementById('login-usuario');
+            if (!select) return;
+
+            let html = `<option value="" disabled selected>Selecione um usuário...</option>`;
+            if (window.todosUsuarios && window.todosUsuarios.length > 0) {
+                window.todosUsuarios.forEach(u => {
+                    html += `<option value="${u.nome}">${u.nome}</option>`;
+                });
+            }
+            select.innerHTML = html;
+        }
+
         function verificarSessao() {
             let usuarioLogado = localStorage.getItem('usuario_logado');
             let authValida = localStorage.getItem('auth_valida');
@@ -797,12 +921,14 @@
 
         function autenticar(event) {
             event.preventDefault();
-            let usuario = document.getElementById('login-usuario').value;
-            let senha = document.getElementById('login-senha').value;
+            let usuarioNome = document.getElementById('login-usuario').value;
+            let senhaInput = document.getElementById('login-senha').value;
             let errorMsg = document.getElementById('error-msg');
 
-            if (senha === "145565") {
-                localStorage.setItem('usuario_logado', usuario);
+            let userEncontrado = (window.todosUsuarios || []).find(u => u.nome === usuarioNome);
+
+            if (userEncontrado && userEncontrado.senha === senhaInput) {
+                localStorage.setItem('usuario_logado', usuarioNome);
                 localStorage.setItem('auth_valida', 'true');
                 errorMsg.style.display = 'none';
                 document.getElementById('login-senha').value = '';
@@ -833,6 +959,8 @@
                 gerarRelatorio();
             } else if (pageId === 'pag-configuracoes') {
                 renderizarTabelaCategoriasCustom();
+            } else if (pageId === 'pag-usuarios') {
+                renderizarTabelaUsuarios();
             }
         }
 
@@ -1004,7 +1132,6 @@
             document.getElementById('total-contas-agenda').innerText = "Total: R$ " + totalAgenda.toFixed(2);
         }
 
-        /* ================= SIMULAÇÃO DE VIABILIDADE ================= */
         function calcularSimulacao12Meses() {
             let valorTotalSim = parseFloat(document.getElementById('sim-valor').value) || 0;
             let numParcelasSim = parseInt(document.getElementById('sim-parcelas').value) || 1;
