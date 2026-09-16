@@ -142,8 +142,7 @@
 
                     <div class="filtro-mes-container">
                         <label for="filtro-mes" style="margin-bottom:0; font-weight:bold;">Orçamento do Mês:</label>
-                        <select id="filtro-mes" onchange="atualizarTabela()">
-                            <option value="all">Todos os Meses</option>
+                        <select id="filtro-mes" onchange="mudarMesOrcamento()">
                             <option value="2026-01">Janeiro / 2026</option>
                             <option value="2026-02">Fevereiro / 2026</option>
                             <option value="2026-03">Março / 2026</option>
@@ -245,7 +244,6 @@
                     <div class="filtro-mes-container">
                         <label for="filtro-mes-grafico" style="margin-bottom:0; font-weight:bold;">Mês do Gráfico:</label>
                         <select id="filtro-mes-grafico" onchange="atualizarGraficoEEquilibrio()">
-                            <option value="all">Todos os Meses (Geral)</option>
                             <option value="2026-01">Janeiro / 2026</option>
                             <option value="2026-02">Fevereiro / 2026</option>
                             <option value="2026-03">Março / 2026</option>
@@ -450,7 +448,9 @@
             atualizarCategorias();
             atualizarTabelaCategorias();
             atualizarTabelaUsuarios();
-            document.getElementById('data').valueAsDate = new Date();
+            
+            // Inicializa a data com o mês selecionado atualmente
+            mudarMesOrcamento();
         };
 
         function preencherSelectUsuarios() {
@@ -501,6 +501,21 @@
             if (abaId === 'graficos') {
                 atualizarGraficoEEquilibrio();
             }
+        }
+
+        function mudarMesOrcamento() {
+            const mesSelecionado = document.getElementById('filtro-mes').value; // Ex: "2026-12"
+            const inputData = document.getElementById('data');
+            
+            // Mantém o dia atual (ou dia 16), mas atualiza o Ano e o Mês para o selecionado no topo
+            let diaAtual = "16";
+            if (inputData.value) {
+                const partes = inputData.value.split('-');
+                if (partes.length === 3) diaAtual = partes[2];
+            }
+
+            inputData.value = `${mesSelecionado}-${diaAtual}`;
+            atualizarTabela();
         }
 
         function cadastrarCategoria(event) {
@@ -709,7 +724,7 @@
             localStorage.setItem('lancamentos_casa', JSON.stringify(lancamentos));
             atualizarTabela();
             event.target.reset();
-            document.getElementById('data').valueAsDate = new Date();
+            mudarMesOrcamento();
             atualizarCategorias();
         }
 
@@ -731,11 +746,9 @@
 
         function excluirLancamento(index) {
             const itemSelecionado = lancamentos[index];
-            // Pega o nome base da categoria (ex: "Academia" tirando o " (1/12)")
             const nomeBaseCategoria = itemSelecionado.categoria.split(' (')[0];
 
             if (confirm(`Deseja realmente excluir este lançamento e todas as outras parcelas/meses associados a "${nomeBaseCategoria}"?`)) {
-                // Remove todos os lançamentos que compartilham o mesmo tipo e o mesmo nome base de categoria
                 lancamentos = lancamentos.filter(item => {
                     const itemBase = item.categoria.split(' (')[0];
                     return !(itemBase === nomeBaseCategoria && item.tipo === itemSelecionado.tipo);
