@@ -56,11 +56,18 @@
         .btn-pagar { background: #3182ce; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
         .btn-pagar:hover { background: #2b6cb0; }
 
+        .btn-acao { background: none; border: none; cursor: pointer; font-size: 1rem; margin-right: 8px; }
+        .btn-acao:hover { opacity: 0.7; }
+
         .resumo-card { display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; }
         .resumo-item h4 { font-size: 0.9rem; color: #718096; }
         .resumo-item p { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
         .text-green { color: #27ae60; }
         .text-red { color: #e74c3c; }
+
+        .resultado-simulacao { padding: 15px; border-radius: 6px; margin-top: 15px; font-weight: 600; display: none; }
+        .sim-positivo { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .sim-negativo { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -88,6 +95,7 @@
             <ul class="sidebar-menu">
                 <li><a class="active" onclick="mudarAba('lancamentos', this)">Lançamentos</a></li>
                 <li><a onclick="mudarAba('graficos', this)">Gráficos & Equilíbrio</a></li>
+                <li><a onclick="mudarAba('simulacao', this)">Simulador de Compra</a></li>
             </ul>
         </div>
 
@@ -101,8 +109,6 @@
                 
                 <!-- ABA LANÇAMENTOS -->
                 <div id="tab-lancamentos" class="tab-content active">
-                    
-                    <!-- AGENDA DE CONTAS (PRÓXIMOS 15 DIAS) -->
                     <div class="card" style="border-left: 4px solid #f39c12;">
                         <h3>🔔 Contas a Vencer (Próximos 15 dias)</h3>
                         <table>
@@ -114,15 +120,14 @@
                                     <th>Ação</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabela-vencimentos">
-                                <!-- Preenchido via JavaScript -->
-                            </tbody>
+                            <tbody id="tabela-vencimentos"></tbody>
                         </table>
                     </div>
 
                     <div class="card">
-                        <h3>Novo Lançamento</h3>
-                        <form onsubmit="adicionarLancamento(event)">
+                        <h3 id="titulo-form">Novo Lançamento</h3>
+                        <form onsubmit="salvarLancamento(event)">
+                            <input type="hidden" id="edit-index" value="-1">
                             <label>Data</label>
                             <input type="date" id="data" required>
                             
@@ -134,8 +139,7 @@
 
                             <label>Categoria</label>
                             <div id="container-categoria">
-                                <!-- Dinâmico via JS -->
-                                <select id="categoria-select">
+                                <select id="categoria-input">
                                     <option value="Salário Esposo">Salário Esposo</option>
                                     <option value="Salário Esposa">Salário Esposa</option>
                                     <option value="Extra">Extra</option>
@@ -145,7 +149,7 @@
                             <label>Valor (R$)</label>
                             <input type="number" step="0.01" id="valor" placeholder="0.00" required>
 
-                            <button type="submit" class="btn-primary">Adicionar Lançamento</button>
+                            <button type="submit" class="btn-primary" id="btn-submit-text">Adicionar Lançamento</button>
                         </form>
                     </div>
 
@@ -158,11 +162,10 @@
                                     <th>Tipo</th>
                                     <th>Categoria</th>
                                     <th>Valor</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="tabela-corpo">
-                                <!-- Lançamentos entram aqui -->
-                            </tbody>
+                            <tbody id="tabela-corpo"></tbody>
                         </table>
                     </div>
                 </div>
@@ -192,20 +195,35 @@
                     </div>
                 </div>
 
+                <!-- ABA SIMULADOR DE COMPRA -->
+                <div id="tab-simulacao" class="tab-content">
+                    <div class="card">
+                        <h3>🛍️ Simulador de Compra (Projeção 12 Meses)</h3>
+                        <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Informe o que você pretende comprar e o valor. O sistema analisará a sua média financeira atual projetada para os próximos 12 meses para avaliar o impacto e o risco.</p>
+                        
+                        <label>O que você pretende comprar?</label>
+                        <input type="text" id="sim-produto" placeholder="Ex: Moto nova, Geladeira, Viagem...">
+
+                        <label>Valor da Compra (R$)</label>
+                        <input type="number" step="0.01" id="sim-valor" placeholder="0.00">
+
+                        <button type="button" class="btn-primary" onclick="analisarCompra()">Analisar Viabilidade</button>
+
+                        <div id="resultado-simulacao" class="resultado-simulacao"></div>
+                    </div>
+                </div>
+
             </div>
         </div>
     </div>
 
     <script>
         let lancamentos = [];
-        
-        // Exemplo de contas cadastradas para vencer nos próximos 15 dias (você pode personalizar)
         let contasPendentes = [
             { id: 1, vencimento: '2026-09-20', descricao: 'Aluguel', valor: '1200.00' },
             { id: 2, vencimento: '2026-09-25', descricao: 'Energia Elétrica', valor: '180.50' },
             { id: 3, vencimento: '2026-09-28', descricao: 'Internet', valor: '99.90' }
         ];
-
         let meuGrafico = null;
 
         window.onload = function() {
@@ -263,7 +281,6 @@
             }
         }
 
-        // Alterna entre select (para Entrada) e input text (para Saída)
         function atualizarCategorias() {
             const tipo = document.getElementById('tipo').value;
             const container = document.getElementById('container-categoria');
@@ -283,7 +300,6 @@
             }
         }
 
-        // Atualiza a tabela de contas a vencer (próximos 15 dias)
         function atualizarContasVencer() {
             const corpo = document.getElementById('tabela-vencimentos');
             corpo.innerHTML = '';
@@ -320,9 +336,10 @@
             atualizarContasVencer();
         }
 
-        function adicionarLancamento(event) {
+        function salvarLancamento(event) {
             event.preventDefault();
             
+            const editIndex = parseInt(document.getElementById('edit-index').value);
             const novoItem = {
                 data: document.getElementById('data').value,
                 tipo: document.getElementById('tipo').value,
@@ -330,26 +347,60 @@
                 valor: parseFloat(document.getElementById('valor').value).toFixed(2)
             };
 
-            lancamentos.push(novoItem);
-            localStorage.setItem('lancamentos_casa', JSON.stringify(lancamentos));
+            if (editIndex === -1) {
+                lancamentos.push(novoItem);
+            } else {
+                lancamentos[editIndex] = novoItem;
+                document.getElementById('edit-index').value = -1;
+                document.getElementById('titulo-form').innerText = "Novo Lançamento";
+                document.getElementById('btn-submit-text').innerText = "Adicionar Lançamento";
+            }
 
+            localStorage.setItem('lancamentos_casa', JSON.stringify(lancamentos));
             atualizarTabela();
             event.target.reset();
             document.getElementById('data').valueAsDate = new Date();
             atualizarCategorias();
         }
 
+        function editarLancamento(index) {
+            const item = lancamentos[index];
+            document.getElementById('data').value = item.data;
+            document.getElementById('tipo').value = item.tipo;
+            atualizarCategorias();
+            document.getElementById('categoria-input').value = item.categoria;
+            document.getElementById('valor').value = item.valor;
+            
+            document.getElementById('edit-index').value = index;
+            document.getElementById('titulo-form').innerText = "Editar Lançamento";
+            document.getElementById('btn-submit-text').innerText = "Salvar Alterações";
+            
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function excluirLancamento(index) {
+            if (confirm("Deseja realmente excluir este lançamento?")) {
+                lancamentos.splice(index, 1);
+                localStorage.setItem('lancamentos_casa', JSON.stringify(lancamentos));
+                atualizarTabela();
+            }
+        }
+
         function atualizarTabela() {
             const corpo = document.getElementById('tabela-corpo');
             corpo.innerHTML = '';
 
-            lancamentos.forEach(item => {
+            lancamentos.forEach((item, index) => {
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
                     <td>${item.data.split('-').reverse().join('/')}</td>
                     <td>${item.tipo}</td>
                     <td>${item.categoria}</td>
                     <td>R$ ${item.valor}</td>
+                    <td>
+                        <button class="btn-acao" onclick="editarLancamento(${index})" title="Editar">✏️</button>
+                        <button class="btn-acao" onclick="excluirLancamento(${index})" title="Excluir">🗑️</button>
+                    </td>
                 `;
                 corpo.appendChild(linha);
             });
@@ -375,17 +426,10 @@
             
             const pEquilibrio = document.getElementById('resumo-equilibrio');
             pEquilibrio.innerText = `R$ ${equilibrio.toFixed(2)}`;
-            if (equilibrio >= 0) {
-                pEquilibrio.className = 'text-green';
-            } else {
-                pEquilibrio.className = 'text-red';
-            }
+            pEquilibrio.className = equilibrio >= 0 ? 'text-green' : 'text-red';
 
-            // Renderizar Gráfico
             const ctx = document.getElementById('graficoMensal').getContext('2d');
-            if (meuGrafico) {
-                meuGrafico.destroy();
-            }
+            if (meuGrafico) meuGrafico.destroy();
 
             meuGrafico = new Chart(ctx, {
                 type: 'bar',
@@ -401,11 +445,49 @@
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
+                    scales: { y: { beginAtZero: true } }
                 }
             });
+        }
+
+        function analisarCompra() {
+            const produto = document.getElementById('sim-produto').value;
+            const valorCompra = parseFloat(document.getElementById('sim-valor').value);
+            const divResultado = document.getElementById('resultado-simulacao');
+
+            if (!produto || isNaN(valorCompra) || valorCompra <= 0) {
+                alert("Por favor, preencha o nome do item e um valor válido.");
+                return;
+            }
+
+            let totalEntradas = 0;
+            let totalSaidas = 0;
+
+            lancamentos.forEach(item => {
+                const val = parseFloat(item.valor);
+                if (item.tipo === 'Entrada') totalEntradas += val;
+                else totalSaidas += val;
+            });
+
+            // Projeção para 12 meses
+            const saldoMensalAtual = totalEntradas - totalSaidas;
+            const saldoProjetado12Meses = saldoMensalAtual * 12;
+
+            divResultado.style.display = 'block';
+
+            if (saldoProjetado12Meses >= valorCompra) {
+                let risco = Math.min(100, Math.round((valorCompra / (saldoProjetado12Meses > 0 ? saldoProjetado12Meses : 1)) * 100));
+                divResultado.className = "resultado-simulacao sim-positivo";
+                divResultado.innerHTML = `✅ **Viável!** Com base na sua projeção para os próximos 12 meses, você pode comprar <strong>${produto}</strong>.<br>
+                • Saldo projetado em 12 meses: R$ ${saldoProjetado12Meses.toFixed(2)}<br>
+                • Risco estimado da compra: <strong>${risco}%</strong> do seu saldo anual projetado.`;
+            } else {
+                let deficit = valorCompra - saldoProjetado12Meses;
+                divResultado.className = "resultado-simulacao sim-negativo";
+                divResultado.innerHTML = `❌ **Atenção / Inviável no momento!** A compra de <strong>${produto}</strong> compromete suas finanças projetadas para os próximos 12 meses.<br>
+                • Você ficaria com um déficit de aprox. R$ ${deficit.toFixed(2)} considerando o ritmo atual.<br>
+                • Risco de endividamento / impacto elevado no orçamento.`;
+            }
         }
     </script>
 </body>
