@@ -107,6 +107,7 @@
                 <li><a class="active" onclick="mudarAba('lancamentos', this)">Lançamentos</a></li>
                 <li><a onclick="mudarAba('graficos', this)">Gráficos & Equilíbrio</a></li>
                 <li><a onclick="mudarAba('simulacao', this)">Simulador de Compra</a></li>
+                <li><a onclick="mudarAba('categorias', this)">Gerenciar Categorias</a></li>
                 <li><a onclick="mudarAba('usuarios', this)">Gerenciar Usuários</a></li>
             </ul>
         </div>
@@ -150,13 +151,9 @@
                             </select>
 
                             <label>Categoria</label>
-                            <div id="container-categoria">
-                                <select id="categoria-input">
-                                    <option value="Salário Esposo">Salário Esposo</option>
-                                    <option value="Salário Esposa">Salário Esposa</option>
-                                    <option value="Extra">Extra</option>
-                                </select>
-                            </div>
+                            <select id="categoria-input">
+                                <!-- Preenchido dinamicamente conforme o Tipo -->
+                            </select>
 
                             <label>Valor (R$)</label>
                             <input type="number" step="0.01" id="valor" placeholder="0.00" required>
@@ -282,6 +279,39 @@
                     </div>
                 </div>
 
+                <!-- ABA GERENCIAR CATEGORIAS -->
+                <div id="tab-categorias" class="tab-content">
+                    <div class="card">
+                        <h3>🏷️ Cadastrar Nova Categoria</h3>
+                        <form onsubmit="cadastrarCategoria(event)">
+                            <label>Tipo de Categoria</label>
+                            <select id="nova-cat-tipo">
+                                <option value="Entrada">Entrada</option>
+                                <option value="Saída">Saída</option>
+                            </select>
+
+                            <label>Nome da Categoria</label>
+                            <input type="text" id="nova-cat-nome" placeholder="Ex: Mercado, Luz, Aluguel..." required>
+
+                            <button type="submit" class="btn-primary">Adicionar Categoria</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h3>Categorias Cadastradas</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Tipo</th>
+                                    <th>Nome da Categoria</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-categorias"></tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <!-- ABA GERENCIAR USUÁRIOS -->
                 <div id="tab-usuarios" class="tab-content">
                     <div class="card">
@@ -328,15 +358,32 @@
             { nome: 'Sara', senha: '123' }
         ];
 
+        let categoriasCadastradas = [
+            { tipo: 'Entrada', nome: 'Salário Esposo' },
+            { tipo: 'Entrada', nome: 'Salário Esposa' },
+            { tipo: 'Entrada', nome: 'Extra' },
+            { tipo: 'Saída', nome: 'Mercado' },
+            { tipo: 'Saída', nome: 'Luz' },
+            { tipo: 'Saída', nome: 'Água' },
+            { tipo: 'Saída', nome: 'Internet' },
+            { tipo: 'Saída', nome: 'Aluguel' }
+        ];
+
         let meuGrafico = null;
 
         window.onload = function() {
-            // Força a atualização da lista padrão com a senha correta do Rafael
-            localStorage.setItem('usuarios_sistema', JSON.stringify(usuariosCadastrados));
-
             const usuariosSalvos = localStorage.getItem('usuarios_sistema');
             if (usuariosSalvos) {
                 usuariosCadastrados = JSON.parse(usuariosSalvos);
+            } else {
+                localStorage.setItem('usuarios_sistema', JSON.stringify(usuariosCadastrados));
+            }
+
+            const categoriasSalvas = localStorage.getItem('categorias_sistema');
+            if (categoriasSalvas) {
+                categoriasCadastradas = JSON.parse(categoriasSalvas);
+            } else {
+                localStorage.setItem('categorias_sistema', JSON.stringify(categoriasCadastradas));
             }
 
             preencherSelectUsuarios();
@@ -358,6 +405,7 @@
 
             atualizarContasVencer();
             atualizarCategorias();
+            atualizarTabelaCategorias();
             atualizarTabelaUsuarios();
             document.getElementById('data').valueAsDate = new Date();
         };
@@ -412,6 +460,51 @@
             }
         }
 
+        function cadastrarCategoria(event) {
+            event.preventDefault();
+            const tipo = document.getElementById('nova-cat-tipo').value;
+            const nome = document.getElementById('nova-cat-nome').value.trim();
+
+            if (!nome) return;
+
+            if (categoriasCadastradas.some(c => c.tipo === tipo && c.nome.toLowerCase() === nome.toLowerCase())) {
+                alert("Esta categoria já existe para este tipo!");
+                return;
+            }
+
+            categoriasCadastradas.push({ tipo, nome });
+            localStorage.setItem('categorias_sistema', JSON.stringify(categoriasCadastradas));
+
+            atualizarCategorias();
+            atualizarTabelaCategorias();
+            event.target.reset();
+            alert("Categoria cadastrada com sucesso!");
+        }
+
+        function excluirCategoria(index) {
+            if (confirm("Deseja realmente excluir esta categoria?")) {
+                categoriasCadastradas.splice(index, 1);
+                localStorage.setItem('categorias_sistema', JSON.stringify(categoriasCadastradas));
+                atualizarCategorias();
+                atualizarTabelaCategorias();
+            }
+        }
+
+        function atualizarTabelaCategorias() {
+            const corpo = document.getElementById('tabela-categorias');
+            corpo.innerHTML = '';
+
+            categoriasCadastradas.forEach((cat, index) => {
+                const linha = document.createElement('tr');
+                linha.innerHTML = `
+                    <td>${cat.tipo}</td>
+                    <td>${cat.nome}</td>
+                    <td><button class="btn-acao" onclick="excluirCategoria(${index})" title="Excluir">🗑️</button></td>
+                `;
+                corpo.appendChild(linha);
+            });
+        }
+
         function cadastrarUsuario(event) {
             event.preventDefault();
             const nome = document.getElementById('novo-user-nome').value.trim();
@@ -462,21 +555,26 @@
 
         function atualizarCategorias() {
             const tipo = document.getElementById('tipo').value;
-            const container = document.getElementById('container-categoria');
+            const selectCategoria = document.getElementById('categoria-input');
+            
+            selectCategoria.innerHTML = '';
 
-            if (tipo === 'Entrada') {
-                container.innerHTML = `
-                    <select id="categoria-input">
-                        <option value="Salário Esposo">Salário Esposo</option>
-                        <option value="Salário Esposa">Salário Esposa</option>
-                        <option value="Extra">Extra</option>
-                    </select>
-                `;
-            } else {
-                container.innerHTML = `
-                    <input type="text" id="categoria-input" placeholder="Ex: Mercado, Luz, Combustível..." required>
-                `;
+            const filtradas = categoriasCadastradas.filter(c => c.tipo === tipo);
+
+            if (filtradas.length === 0) {
+                const option = document.createElement('option');
+                option.value = "";
+                option.textContent = "Nenhuma categoria cadastrada";
+                selectCategoria.appendChild(option);
+                return;
             }
+
+            filtradas.forEach(cat => {
+                const option = document.createElement('option');
+                option.value = cat.nome;
+                option.textContent = cat.nome;
+                selectCategoria.appendChild(option);
+            });
         }
 
         function atualizarContasVencer() {
@@ -525,6 +623,11 @@
                 categoria: document.getElementById('categoria-input').value,
                 valor: parseFloat(document.getElementById('valor').value).toFixed(2)
             };
+
+            if (!novoItem.categoria) {
+                alert("Selecione ou cadastre uma categoria antes de salvar.");
+                return;
+            }
 
             if (editIndex === -1) {
                 lancamentos.push(novoItem);
