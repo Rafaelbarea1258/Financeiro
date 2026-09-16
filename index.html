@@ -680,7 +680,6 @@
             }
 
             if (editIndex === -1) {
-                // Cria exatamente o valor informado em cada mês/parcela
                 for (let i = 0; i < qtdParcelas; i++) {
                     let dataObj = new Date(dataInicial + 'T00:00:00');
                     dataObj.setMonth(dataObj.getMonth() + i);
@@ -731,8 +730,17 @@
         }
 
         function excluirLancamento(index) {
-            if (confirm("Deseja realmente excluir este lançamento?")) {
-                lancamentos.splice(index, 1);
+            const itemSelecionado = lancamentos[index];
+            // Pega o nome base da categoria (ex: "Academia" tirando o " (1/12)")
+            const nomeBaseCategoria = itemSelecionado.categoria.split(' (')[0];
+
+            if (confirm(`Deseja realmente excluir este lançamento e todas as outras parcelas/meses associados a "${nomeBaseCategoria}"?`)) {
+                // Remove todos os lançamentos que compartilham o mesmo tipo e o mesmo nome base de categoria
+                lancamentos = lancamentos.filter(item => {
+                    const itemBase = item.categoria.split(' (')[0];
+                    return !(itemBase === nomeBaseCategoria && item.tipo === itemSelecionado.tipo);
+                });
+
                 localStorage.setItem('lancamentos_casa', JSON.stringify(lancamentos));
                 atualizarTabela();
             }
@@ -784,7 +792,7 @@
                     <td>R$ ${item.valor}</td>
                     <td>
                         <button class="btn-acao" onclick="editarLancamento(${realIndex})" title="Editar">✏️</button>
-                        <button class="btn-acao" onclick="excluirLancamento(${realIndex})" title="Excluir">🗑️</button>
+                        <button class="btn-acao" onclick="excluirLancamento(${realIndex})" title="Excluir Todas as Parcelas">🗑️</button>
                     </td>
                 `;
                 corpo.appendChild(linha);
