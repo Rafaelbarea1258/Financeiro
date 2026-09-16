@@ -31,7 +31,7 @@
         .btn-login:hover { background: #fa5252; }
 
         /* APLICAÇÃO */
-        #app-screen { display: none; width: 100vw; height: 100vh; display: flex; }
+        #app-screen { width: 100vw; height: 100vh; display: flex; }
         .sidebar { width: 260px; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
         .sidebar-brand { padding: 20px; font-size: 1.1rem; font-weight: bold; color: #ff6b6b; border-bottom: 1px solid #edf2f7; }
         .sidebar-menu { list-style: none; padding: 15px 0; }
@@ -47,11 +47,23 @@
         label { display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
         input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; margin-bottom: 15px; }
         .btn-primary { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
+        .btn-primary:hover { background: #219653; }
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 12px; font-size: 0.85rem; color: #718096; background: #f7fafc; border-bottom: 1px solid #e2e8f0; }
         td { padding: 12px; font-size: 0.9rem; border-bottom: 1px solid #edf2f7; }
         
+        .btn-pagar { background: #3182ce; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+        .btn-pagar:hover { background: #2b6cb0; }
+
+        .resumo-card { display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; }
+        .resumo-item h4 { font-size: 0.9rem; color: #718096; }
+        .resumo-item p { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+        .text-green { color: #27ae60; }
+        .text-red { color: #e74c3c; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
         .hidden { display: none !important; }
     </style>
 </head>
@@ -74,7 +86,8 @@
         <div class="sidebar">
             <div class="sidebar-brand">Financeiro Casa</div>
             <ul class="sidebar-menu">
-                <li><a class="active">Lançamentos</a></li>
+                <li><a class="active" onclick="mudarAba('lancamentos', this)">Lançamentos</a></li>
+                <li><a onclick="mudarAba('graficos', this)">Gráficos & Equilíbrio</a></li>
             </ul>
         </div>
 
@@ -85,52 +98,116 @@
             </div>
 
             <div class="content">
-                <div class="card">
-                    <h3>Novo Lançamento</h3>
-                    <form onsubmit="adicionarLancamento(event)">
-                        <label>Data</label>
-                        <input type="date" id="data" required>
-                        
-                        <label>Tipo</label>
-                        <select id="tipo">
-                            <option value="Entrada">Entrada</option>
-                            <option value="Saída">Saída</option>
-                        </select>
+                
+                <!-- ABA LANÇAMENTOS -->
+                <div id="tab-lancamentos" class="tab-content active">
+                    
+                    <!-- AGENDA DE CONTAS (PRÓXIMOS 15 DIAS) -->
+                    <div class="card" style="border-left: 4px solid #f39c12;">
+                        <h3>🔔 Contas a Vencer (Próximos 15 dias)</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Vencimento</th>
+                                    <th>Conta / Descrição</th>
+                                    <th>Valor</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-vencimentos">
+                                <!-- Preenchido via JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
 
-                        <label>Categoria</label>
-                        <input type="text" id="categoria" placeholder="Ex: Mercado, Luz..." required>
+                    <div class="card">
+                        <h3>Novo Lançamento</h3>
+                        <form onsubmit="adicionarLancamento(event)">
+                            <label>Data</label>
+                            <input type="date" id="data" required>
+                            
+                            <label>Tipo</label>
+                            <select id="tipo" onchange="atualizarCategorias()">
+                                <option value="Entrada">Entrada</option>
+                                <option value="Saída">Saída</option>
+                            </select>
 
-                        <label>Valor (R$)</label>
-                        <input type="number" step="0.01" id="valor" placeholder="0.00" required>
+                            <label>Categoria</label>
+                            <div id="container-categoria">
+                                <!-- Dinâmico via JS -->
+                                <select id="categoria-select">
+                                    <option value="Salário Esposo">Salário Esposo</option>
+                                    <option value="Salário Esposa">Salário Esposa</option>
+                                    <option value="Extra">Extra</option>
+                                </select>
+                            </div>
 
-                        <button type="submit" class="btn-primary">Adicionar Lançamento</button>
-                    </form>
+                            <label>Valor (R$)</label>
+                            <input type="number" step="0.01" id="valor" placeholder="0.00" required>
+
+                            <button type="submit" class="btn-primary">Adicionar Lançamento</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h3>Lista de Lançamentos</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Tipo</th>
+                                    <th>Categoria</th>
+                                    <th>Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-corpo">
+                                <!-- Lançamentos entram aqui -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
-                <div class="card">
-                    <h3>Lista de Lançamentos</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Data</th>
-                                <th>Tipo</th>
-                                <th>Categoria</th>
-                                <th>Valor</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabela-corpo">
-                            <!-- Os dados entram aqui -->
-                        </tbody>
-                    </table>
+                <!-- ABA GRÁFICOS E EQUILÍBRIO -->
+                <div id="tab-graficos" class="tab-content">
+                    <div class="card resumo-card">
+                        <div class="resumo-item">
+                            <h4>Total Entradas</h4>
+                            <p id="resumo-entradas" class="text-green">R$ 0,00</p>
+                        </div>
+                        <div class="resumo-item">
+                            <h4>Total Saídas</h4>
+                            <p id="resumo-saidas" class="text-red">R$ 0,00</p>
+                        </div>
+                        <div class="resumo-item">
+                            <h4>Equilíbrio Mensal</h4>
+                            <p id="resumo-equilibrio">R$ 0,00</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Gráfico Mensal: Entradas vs Saídas</h3>
+                        <div style="width: 100%; max-width: 600px; margin: 0 auto; height: 320px;">
+                            <canvas id="graficoMensal"></canvas>
+                        </div>
+                    </div>
                 </div>
+
             </div>
         </div>
     </div>
 
     <script>
         let lancamentos = [];
+        
+        // Exemplo de contas cadastradas para vencer nos próximos 15 dias (você pode personalizar)
+        let contasPendentes = [
+            { id: 1, vencimento: '2026-09-20', descricao: 'Aluguel', valor: '1200.00' },
+            { id: 2, vencimento: '2026-09-25', descricao: 'Energia Elétrica', valor: '180.50' },
+            { id: 3, vencimento: '2026-09-28', descricao: 'Internet', valor: '99.90' }
+        ];
 
-        // Ao abrir a página, verifica se já está logado e carrega os dados salvos
+        let meuGrafico = null;
+
         window.onload = function() {
             const usuarioLogado = localStorage.getItem('usuario_logado');
             if (usuarioLogado) {
@@ -140,12 +217,20 @@
                 document.getElementById('app-screen').classList.add('hidden');
             }
 
-            // Carrega os lançamentos salvos no navegador (não somem ao atualizar)
             const dadosSalvos = localStorage.getItem('lancamentos_casa');
             if (dadosSalvos) {
                 lancamentos = JSON.parse(dadosSalvos);
                 atualizarTabela();
             }
+
+            const contasSalvas = localStorage.getItem('contas_pendentes');
+            if (contasSalvas) {
+                contasPendentes = JSON.parse(contasSalvas);
+            }
+
+            atualizarContasVencer();
+            atualizarCategorias();
+            document.getElementById('data').valueAsDate = new Date();
         };
 
         function fazerLogin(event) {
@@ -166,23 +251,92 @@
             location.reload();
         }
 
+        function mudarAba(abaId, elemento) {
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+            
+            document.getElementById(`tab-${abaId}`).classList.add('active');
+            elemento.classList.add('active');
+
+            if (abaId === 'graficos') {
+                atualizarGraficoEEquilibrio();
+            }
+        }
+
+        // Alterna entre select (para Entrada) e input text (para Saída)
+        function atualizarCategorias() {
+            const tipo = document.getElementById('tipo').value;
+            const container = document.getElementById('container-categoria');
+
+            if (tipo === 'Entrada') {
+                container.innerHTML = `
+                    <select id="categoria-input">
+                        <option value="Salário Esposo">Salário Esposo</option>
+                        <option value="Salário Esposa">Salário Esposa</option>
+                        <option value="Extra">Extra</option>
+                    </select>
+                `;
+            } else {
+                container.innerHTML = `
+                    <input type="text" id="categoria-input" placeholder="Ex: Mercado, Luz, Combustível..." required>
+                `;
+            }
+        }
+
+        // Atualiza a tabela de contas a vencer (próximos 15 dias)
+        function atualizarContasVencer() {
+            const corpo = document.getElementById('tabela-vencimentos');
+            corpo.innerHTML = '';
+
+            const hoje = new Date();
+            const daqui15Dias = new Date();
+            daqui15Dias.setDate(hoje.getDate() + 15);
+
+            let filtradas = contasPendentes.filter(conta => {
+                const dataVenc = new Date(conta.vencimento + 'T00:00:00');
+                return dataVenc >= new Date(hoje.toISOString().split('T')[0] + 'T00:00:00') && dataVenc <= daqui15Dias;
+            });
+
+            if (filtradas.length === 0) {
+                corpo.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#718096;">Nenhuma conta vencendo nos próximos 15 dias.</td></tr>`;
+                return;
+            }
+
+            filtradas.forEach(conta => {
+                const linha = document.createElement('tr');
+                linha.innerHTML = `
+                    <td>${conta.vencimento.split('-').reverse().join('/')}</td>
+                    <td>${conta.descricao}</td>
+                    <td>R$ ${parseFloat(conta.valor).toFixed(2)}</td>
+                    <td><button class="btn-pagar" onclick="marcarComoPago(${conta.id})">Já Paguei ✓</button></td>
+                `;
+                corpo.appendChild(linha);
+            });
+        }
+
+        function marcarComoPago(id) {
+            contasPendentes = contasPendentes.filter(c => c.id !== id);
+            localStorage.setItem('contas_pendentes', JSON.stringify(contasPendentes));
+            atualizarContasVencer();
+        }
+
         function adicionarLancamento(event) {
             event.preventDefault();
             
             const novoItem = {
                 data: document.getElementById('data').value,
                 tipo: document.getElementById('tipo').value,
-                categoria: document.getElementById('categoria').value,
+                categoria: document.getElementById('categoria-input').value,
                 valor: parseFloat(document.getElementById('valor').value).toFixed(2)
             };
 
             lancamentos.push(novoItem);
-
-            // Salva permanentemente no navegador (LocalStorage)
             localStorage.setItem('lancamentos_casa', JSON.stringify(lancamentos));
 
             atualizarTabela();
             event.target.reset();
+            document.getElementById('data').valueAsDate = new Date();
+            atualizarCategorias();
         }
 
         function atualizarTabela() {
@@ -192,12 +346,65 @@
             lancamentos.forEach(item => {
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
-                    <td>${item.data}</td>
+                    <td>${item.data.split('-').reverse().join('/')}</td>
                     <td>${item.tipo}</td>
                     <td>${item.categoria}</td>
                     <td>R$ ${item.valor}</td>
                 `;
                 corpo.appendChild(linha);
+            });
+        }
+
+        function atualizarGraficoEEquilibrio() {
+            let totalEntradas = 0;
+            let totalSaidas = 0;
+
+            lancamentos.forEach(item => {
+                const val = parseFloat(item.valor);
+                if (item.tipo === 'Entrada') {
+                    totalEntradas += val;
+                } else {
+                    totalSaidas += val;
+                }
+            });
+
+            const equilibrio = totalEntradas - totalSaidas;
+
+            document.getElementById('resumo-entradas').innerText = `R$ ${totalEntradas.toFixed(2)}`;
+            document.getElementById('resumo-saidas').innerText = `R$ ${totalSaidas.toFixed(2)}`;
+            
+            const pEquilibrio = document.getElementById('resumo-equilibrio');
+            pEquilibrio.innerText = `R$ ${equilibrio.toFixed(2)}`;
+            if (equilibrio >= 0) {
+                pEquilibrio.className = 'text-green';
+            } else {
+                pEquilibrio.className = 'text-red';
+            }
+
+            // Renderizar Gráfico
+            const ctx = document.getElementById('graficoMensal').getContext('2d');
+            if (meuGrafico) {
+                meuGrafico.destroy();
+            }
+
+            meuGrafico = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Entradas', 'Saídas'],
+                    datasets: [{
+                        label: 'Total em R$',
+                        data: [totalEntradas, totalSaidas],
+                        backgroundColor: ['#27ae60', '#e74c3c'],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
             });
         }
     </script>
