@@ -50,6 +50,9 @@
         .btn-primary { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
         .btn-primary:hover { background: #219653; }
         
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        @media(max-width: 1024px) { .grid-2 { grid-template-columns: 1fr; } }
+
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th { text-align: left; padding: 12px; font-size: 0.85rem; color: #718096; background: #f7fafc; border-bottom: 1px solid #e2e8f0; }
         td { padding: 12px; font-size: 0.9rem; border-bottom: 1px solid #edf2f7; }
@@ -60,11 +63,11 @@
         .btn-acao { background: none; border: none; cursor: pointer; font-size: 1rem; margin-right: 8px; }
         .btn-acao:hover { opacity: 0.7; }
 
-        .resumo-card { display: flex; justify-content: space-around; text-align: center; margin-bottom: 20px; }
-        .resumo-item h4 { font-size: 0.9rem; color: #718096; }
-        .resumo-item p { font-size: 1.4rem; font-weight: bold; margin-top: 5px; }
+        .resumo-box { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #f7fafc; border-radius: 6px; margin-bottom: 15px; border: 1px solid #e2e8f0; }
+        .resumo-box span { font-size: 1.2rem; font-weight: bold; }
         .text-green { color: #27ae60; }
         .text-red { color: #e74c3c; }
+        .text-blue { color: #3182ce; }
 
         .resultado-simulacao { padding: 15px; border-radius: 6px; margin-top: 15px; font-weight: 600; display: none; line-height: 1.6; }
         .sim-positivo { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
@@ -137,72 +140,90 @@
                         </table>
                     </div>
 
-                    <div class="card">
-                        <h3 id="titulo-form">Novo Lançamento</h3>
-                        <form onsubmit="salvarLancamento(event)">
-                            <input type="hidden" id="edit-index" value="-1">
-                            <label>Data Inicial</label>
-                            <input type="date" id="data" required>
-                            
-                            <label>Tipo</label>
-                            <select id="tipo" onchange="atualizarCategorias()">
-                                <option value="Entrada">Entrada</option>
-                                <option value="Saída">Saída</option>
-                            </select>
+                    <div class="filtro-mes-container">
+                        <label for="filtro-mes" style="margin-bottom:0; font-weight:bold;">Orçamento do Mês:</label>
+                        <select id="filtro-mes" onchange="atualizarTabela()">
+                            <option value="all">Todos os Meses</option>
+                            <option value="2026-01">Janeiro / 2026</option>
+                            <option value="2026-02">Fevereiro / 2026</option>
+                            <option value="2026-03">Março / 2026</option>
+                            <option value="2026-04">Abril / 2026</option>
+                            <option value="2026-05">Maio / 2026</option>
+                            <option value="2026-06">Junho / 2026</option>
+                            <option value="2026-07">Julho / 2026</option>
+                            <option value="2026-08">Agosto / 2026</option>
+                            <option value="2026-09" selected>Setembro / 2026</option>
+                            <option value="2026-10">Outubro / 2026</option>
+                            <option value="2026-11">Novembro / 2026</option>
+                            <option value="2026-12">Dezembro / 2026</option>
+                        </select>
+                    </div>
 
-                            <label>Categoria</label>
-                            <select id="categoria-input">
-                                <!-- Preenchido dinamicamente conforme o Tipo -->
-                            </select>
-
-                            <div id="bloco-parcelas">
-                                <label>Quantidade de Parcelas</label>
-                                <select id="qtd-parcelas">
-                                    <option value="1">À vista (1x)</option>
-                                    <option value="2">2 vezes</option>
-                                    <option value="3">3 vezes</option>
-                                    <option value="4">4 vezes</option>
-                                    <option value="5">5 vezes</option>
-                                    <option value="6">6 vezes</option>
-                                    <option value="7">7 vezes</option>
-                                    <option value="8">8 vezes</option>
-                                    <option value="9">9 vezes</option>
-                                    <option value="10">10 vezes</option>
-                                    <option value="11">11 vezes</option>
-                                    <option value="12">12 vezes</option>
-                                    <option value="15">15 vezes</option>
-                                    <option value="18">18 vezes</option>
-                                    <option value="24">24 vezes</option>
+                    <div class="grid-2">
+                        <div class="card">
+                            <h3 id="titulo-form">Novo Lançamento</h3>
+                            <form onsubmit="salvarLancamento(event)">
+                                <input type="hidden" id="edit-index" value="-1">
+                                <label>Data do Lançamento</label>
+                                <input type="date" id="data" required>
+                                
+                                <label>Tipo</label>
+                                <select id="tipo" onchange="atualizarCategorias()">
+                                    <option value="Entrada">Entrada</option>
+                                    <option value="Saída">Saída</option>
                                 </select>
+
+                                <label>Categoria / Plano de Contas</label>
+                                <select id="categoria-input">
+                                    <!-- Preenchido dinamicamente -->
+                                </select>
+
+                                <div id="bloco-parcelas">
+                                    <label>Quantidade de Parcelas</label>
+                                    <select id="qtd-parcelas">
+                                        <option value="1">À vista (1x)</option>
+                                        <option value="2">2 vezes</option>
+                                        <option value="3">3 vezes</option>
+                                        <option value="4">4 vezes</option>
+                                        <option value="5">5 vezes</option>
+                                        <option value="6">6 vezes</option>
+                                        <option value="7">7 vezes</option>
+                                        <option value="8">8 vezes</option>
+                                        <option value="9">9 vezes</option>
+                                        <option value="10">10 vezes</option>
+                                        <option value="11">11 vezes</option>
+                                        <option value="12">12 vezes</option>
+                                        <option value="15">15 vezes</option>
+                                        <option value="18">18 vezes</option>
+                                        <option value="24">24 vezes</option>
+                                    </select>
+                                </div>
+
+                                <label>Valor da Parcela (R$) / Valor Total</label>
+                                <input type="number" step="0.01" id="valor" placeholder="0.00" required>
+
+                                <button type="submit" class="btn-primary" id="btn-submit-text">Adicionar Lançamento</button>
+                            </form>
+                        </div>
+
+                        <div class="card">
+                            <h3>Resumo do Mês</h3>
+                            <div class="resumo-box">
+                                <strong>Entradas:</strong>
+                                <span id="resumo-mes-entradas" class="text-green">R$ 0,00</span>
                             </div>
-
-                            <label>Valor Total (R$)</label>
-                            <input type="number" step="0.01" id="valor" placeholder="0.00" required>
-
-                            <button type="submit" class="btn-primary" id="btn-submit-text">Adicionar Lançamento</button>
-                        </form>
+                            <div class="resumo-box">
+                                <strong>Saídas:</strong>
+                                <span id="resumo-mes-saidas" class="text-red">R$ 0,00</span>
+                            </div>
+                            <div class="resumo-box">
+                                <strong>Saldo Final:</strong>
+                                <span id="resumo-mes-saldo" class="text-blue">R$ 0,00</span>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="card">
-                        <div class="filtro-mes-container">
-                            <label for="filtro-mes" style="margin-bottom:0; font-weight:bold;">Filtrar por Mês:</label>
-                            <select id="filtro-mes" onchange="atualizarTabela()">
-                                <option value="all">Todos os Meses</option>
-                                <option value="2026-01">Janeiro / 2026</option>
-                                <option value="2026-02">Fevereiro / 2026</option>
-                                <option value="2026-03">Março / 2026</option>
-                                <option value="2026-04">Abril / 2026</option>
-                                <option value="2026-05">Maio / 2026</option>
-                                <option value="2026-06">Junho / 2026</option>
-                                <option value="2026-07">Julho / 2026</option>
-                                <option value="2026-08">Agosto / 2026</option>
-                                <option value="2026-09" selected>Setembro / 2026</option>
-                                <option value="2026-10">Outubro / 2026</option>
-                                <option value="2026-11">Novembro / 2026</option>
-                                <option value="2026-12">Dezembro / 2026</option>
-                            </select>
-                        </div>
-
                         <h3>Lista de Lançamentos do Mês</h3>
                         <table>
                             <thead>
@@ -581,7 +602,6 @@
             
             selectCategoria.innerHTML = '';
 
-            // Se for Saída, mostra a opção de parcelas. Se for Entrada, oculta.
             if (tipo === 'Saída') {
                 blocoParcelas.style.display = 'block';
             } else {
@@ -661,7 +681,6 @@
             const valorParcela = (valorTotal / qtdParcelas).toFixed(2);
 
             if (editIndex === -1) {
-                // Cria as parcelas mês a mês
                 for (let i = 0; i < qtdParcelas; i++) {
                     let dataObj = new Date(dataInicial + 'T00:00:00');
                     dataObj.setMonth(dataObj.getMonth() + i);
@@ -677,7 +696,6 @@
                     });
                 }
             } else {
-                // Modo edição (edita apenas o item selecionado)
                 lancamentos[editIndex] = {
                     data: dataInicial,
                     tipo: tipo,
@@ -701,9 +719,9 @@
             document.getElementById('data').value = item.data;
             document.getElementById('tipo').value = item.tipo;
             atualizarCategorias();
-            document.getElementById('categoria-input').value = item.categoria.split(' (')[0]; // Remove o marcador de parcela se houver
+            document.getElementById('categoria-input').value = item.categoria.split(' (')[0];
             document.getElementById('valor').value = item.valor;
-            document.getElementById('qtd-parcelas').value = '1'; // Na edição edita a parcela específica
+            document.getElementById('qtd-parcelas').value = '1';
             
             document.getElementById('edit-index').value = index;
             document.getElementById('titulo-form').innerText = "Editar Lançamento";
@@ -730,6 +748,27 @@
                 if (mesFiltro === 'all') return true;
                 return item.data.startsWith(mesFiltro);
             });
+
+            // Calcula os totais do mês filtrado para o Resumo do Mês
+            let totalEntradas = 0;
+            let totalSaidas = 0;
+
+            lancamentosFiltrados.forEach((item) => {
+                const val = parseFloat(item.valor);
+                if (item.tipo === 'Entrada') {
+                    totalEntradas += val;
+                } else {
+                    totalSaidas += val;
+                }
+            });
+
+            const saldoFinal = totalEntradas - totalSaidas;
+
+            document.getElementById('resumo-mes-entradas').innerText = `R$ ${totalEntradas.toFixed(2)}`;
+            document.getElementById('resumo-mes-saidas').innerText = `R$ ${totalSaidas.toFixed(2)}`;
+            const spanSaldo = document.getElementById('resumo-mes-saldo');
+            spanSaldo.innerText = `R$ ${saldoFinal.toFixed(2)}`;
+            spanSaldo.className = saldoFinal >= 0 ? 'text-green' : 'text-red';
 
             if (lancamentosFiltrados.length === 0) {
                 corpo.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#718096;">Nenhum lançamento encontrado para este mês.</td></tr>`;
