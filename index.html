@@ -21,8 +21,9 @@
             box-shadow: 0 10px 25px rgba(0,0,0,0.15); width: 100%; max-width: 380px; text-align: center;
         }
         .login-card h2 { margin-bottom: 20px; color: #2d3748; }
+        .login-card label { text-align: left; display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
         .login-card input, .login-card select {
-            width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 1rem;
+            width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 1rem; background: #fff;
         }
         .btn-login {
             background: #ff6b6b; color: white; border: none; padding: 12px; width: 100%;
@@ -84,10 +85,15 @@
     <div id="login-screen">
         <div class="login-card">
             <h2>Financeiro Casa</h2>
-            <div id="login-erro" class="error-msg">Usuário ou senha incorretos!</div>
+            <div id="login-erro" class="error-msg">Senha incorreta!</div>
             <form onsubmit="fazerLogin(event)">
-                <input type="text" id="login-usuario" placeholder="Nome de Usuário" required>
-                <input type="password" id="login-senha" placeholder="Senha" required>
+                <label>Selecione o Usuário</label>
+                <select id="login-usuario">
+                    <!-- Preenchido via JavaScript -->
+                </select>
+
+                <label>Senha</label>
+                <input type="password" id="login-senha" placeholder="Digite sua senha" required>
                 <button type="submit" class="btn-login">Entrar</button>
             </form>
         </div>
@@ -332,6 +338,8 @@
                 localStorage.setItem('usuarios_sistema', JSON.stringify(usuariosCadastrados));
             }
 
+            preencherSelectUsuarios();
+
             localStorage.removeItem('usuario_logado');
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('app-screen').classList.add('hidden');
@@ -353,12 +361,23 @@
             document.getElementById('data').valueAsDate = new Date();
         };
 
+        function preencherSelectUsuarios() {
+            const select = document.getElementById('login-usuario');
+            select.innerHTML = '';
+            usuariosCadastrados.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.nome;
+                option.textContent = user.nome.charAt(0).toUpperCase() + user.nome.slice(1);
+                select.appendChild(option);
+            });
+        }
+
         function fazerLogin(event) {
             event.preventDefault();
-            const usuarioDigitado = document.getElementById('login-usuario').value.trim().toLowerCase();
+            const usuarioEscolhido = document.getElementById('login-usuario').value;
             const senhaDigitada = document.getElementById('login-senha').value.trim();
 
-            const usuarioEncontrado = usuariosCadastrados.find(u => u.nome.toLowerCase() === usuarioDigitado && u.senha === senhaDigitada);
+            const usuarioEncontrado = usuariosCadastrados.find(u => u.nome === usuarioEscolhido && u.senha === senhaDigitada);
 
             if (usuarioEncontrado) {
                 document.getElementById('login-erro').style.display = 'none';
@@ -372,7 +391,7 @@
         function mostrarApp(usuario) {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').classList.remove('hidden');
-            document.getElementById('user-greeting').innerText = `Logado como: ${usuario}`;
+            document.getElementById('user-greeting').innerText = `Logado como: ${usuario.charAt(0).toUpperCase() + usuario.slice(1)}`;
         }
 
         function fazerLogout() {
@@ -394,12 +413,12 @@
 
         function cadastrarUsuario(event) {
             event.preventDefault();
-            const nome = document.getElementById('novo-user-nome').value.trim();
+            const nome = document.getElementById('novo-user-nome').value.trim().toLowerCase();
             const senha = document.getElementById('novo-user-senha').value.trim();
 
             if (!nome || !senha) return;
 
-            if (usuariosCadastrados.some(u => u.nome.toLowerCase() === nome.toLowerCase())) {
+            if (usuariosCadastrados.some(u => u.nome === nome)) {
                 alert("Este usuário já existe!");
                 return;
             }
@@ -407,6 +426,7 @@
             usuariosCadastrados.push({ nome, senha });
             localStorage.setItem('usuarios_sistema', JSON.stringify(usuariosCadastrados));
             
+            preencherSelectUsuarios();
             atualizarTabelaUsuarios();
             event.target.reset();
             alert("Usuário cadastrado com sucesso!");
@@ -420,6 +440,7 @@
             if (confirm("Deseja realmente excluir este usuário?")) {
                 usuariosCadastrados.splice(index, 1);
                 localStorage.setItem('usuarios_sistema', JSON.stringify(usuariosCadastrados));
+                preencherSelectUsuarios();
                 atualizarTabelaUsuarios();
             }
         }
@@ -431,7 +452,7 @@
             usuariosCadastrados.forEach((user, index) => {
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
-                    <td>${user.nome}</td>
+                    <td>${user.nome.charAt(0).toUpperCase() + user.nome.slice(1)}</td>
                     <td><button class="btn-acao" onclick="excluirUsuario(${index})" title="Excluir">🗑️</button></td>
                 `;
                 corpo.appendChild(linha);
