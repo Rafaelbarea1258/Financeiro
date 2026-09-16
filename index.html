@@ -69,6 +69,9 @@
         .sim-positivo { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .sim-negativo { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
+        .filtro-mes-container { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; background: #f7fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
+        .filtro-mes-container select { margin-bottom: 0; max-width: 250px; }
+
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         .hidden { display: none !important; }
@@ -131,7 +134,7 @@
                         <h3 id="titulo-form">Novo Lançamento</h3>
                         <form onsubmit="salvarLancamento(event)">
                             <input type="hidden" id="edit-index" value="-1">
-                            <label>Data</label>
+                            <label>Data (O mês do lançamento é definido por esta data)</label>
                             <input type="date" id="data" required>
                             
                             <label>Tipo</label>
@@ -157,7 +160,26 @@
                     </div>
 
                     <div class="card">
-                        <h3>Lista de Lançamentos</h3>
+                        <div class="filtro-mes-container">
+                            <label for="filtro-mes" style="margin-bottom:0; font-weight:bold;">Filtrar por Mês:</label>
+                            <select id="filtro-mes" onchange="atualizarTabela()">
+                                <option value="all">Todos os Meses</option>
+                                <option value="2026-01">Janeiro / 2026</option>
+                                <option value="2026-02">Fevereiro / 2026</option>
+                                <option value="2026-03">Março / 2026</option>
+                                <option value="2026-04">Abril / 2026</option>
+                                <option value="2026-05">Maio / 2026</option>
+                                <option value="2026-06">Junho / 2026</option>
+                                <option value="2026-07">Julho / 2026</option>
+                                <option value="2026-08">Agosto / 2026</option>
+                                <option value="2026-09" selected>Setembro / 2026</option>
+                                <option value="2026-10">Outubro / 2026</option>
+                                <option value="2026-11">Novembro / 2026</option>
+                                <option value="2026-12">Dezembro / 2026</option>
+                            </select>
+                        </div>
+
+                        <h3>Lista de Lançamentos do Mês</h3>
                         <table>
                             <thead>
                                 <tr>
@@ -175,6 +197,25 @@
 
                 <!-- ABA GRÁFICOS E EQUILÍBRIO -->
                 <div id="tab-graficos" class="tab-content">
+                    <div class="filtro-mes-container">
+                        <label for="filtro-mes-grafico" style="margin-bottom:0; font-weight:bold;">Mês do Gráfico:</label>
+                        <select id="filtro-mes-grafico" onchange="atualizarGraficoEEquilibrio()">
+                            <option value="all">Todos os Meses (Geral)</option>
+                            <option value="2026-01">Janeiro / 2026</option>
+                            <option value="2026-02">Fevereiro / 2026</option>
+                            <option value="2026-03">Março / 2026</option>
+                            <option value="2026-04">Abril / 2026</option>
+                            <option value="2026-05">Maio / 2026</option>
+                            <option value="2026-06">Junho / 2026</option>
+                            <option value="2026-07">Julho / 2026</option>
+                            <option value="2026-08">Agosto / 2026</option>
+                            <option value="2026-09" selected>Setembro / 2026</option>
+                            <option value="2026-10">Outubro / 2026</option>
+                            <option value="2026-11">Novembro / 2026</option>
+                            <option value="2026-12">Dezembro / 2026</option>
+                        </select>
+                    </div>
+
                     <div class="card resumo-card">
                         <div class="resumo-item">
                             <h4>Total Entradas</h4>
@@ -276,7 +317,6 @@
             { id: 3, vencimento: '2026-09-28', descricao: 'Internet', valor: '99.90' }
         ];
         
-        // Lista padrão de usuários (Rafael e Sara) caso esteja vazio
         let usuariosCadastrados = [
             { nome: 'rafael', senha: '123' },
             { nome: 'sara', senha: '123' }
@@ -285,7 +325,6 @@
         let meuGrafico = null;
 
         window.onload = function() {
-            // Carrega usuários do LocalStorage se houver
             const usuariosSalvos = localStorage.getItem('usuarios_sistema');
             if (usuariosSalvos) {
                 usuariosCadastrados = JSON.parse(usuariosSalvos);
@@ -293,7 +332,6 @@
                 localStorage.setItem('usuarios_sistema', JSON.stringify(usuariosCadastrados));
             }
 
-            // Sempre abre na tela de login ao carregar o site
             localStorage.removeItem('usuario_logado');
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('app-screen').classList.add('hidden');
@@ -361,7 +399,6 @@
 
             if (!nome || !senha) return;
 
-            // Verifica se já existe
             if (usuariosCadastrados.some(u => u.nome.toLowerCase() === nome.toLowerCase())) {
                 alert("Este usuário já existe!");
                 return;
@@ -510,7 +547,22 @@
             const corpo = document.getElementById('tabela-corpo');
             corpo.innerHTML = '';
 
-            lancamentos.forEach((item, index) => {
+            const mesFiltro = document.getElementById('filtro-mes').value;
+
+            // Filtra os lançamentos com base no mês selecionado (YYYY-MM extraído da data)
+            const lancamentosFiltrados = lancamentos.filter((item, index) => {
+                if (mesFiltro === 'all') return true;
+                return item.data.startsWith(mesFiltro);
+            });
+
+            if (lancamentosFiltrados.length === 0) {
+                corpo.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#718096;">Nenhum lançamento encontrado para este mês.</td></tr>`;
+                return;
+            }
+
+            lancamentosFiltrados.forEach((item) => {
+                // Acha o índice real no array principal para editar/excluir certo
+                const realIndex = lancamentos.indexOf(item);
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
                     <td>${item.data.split('-').reverse().join('/')}</td>
@@ -518,8 +570,8 @@
                     <td>${item.categoria}</td>
                     <td>R$ ${item.valor}</td>
                     <td>
-                        <button class="btn-acao" onclick="editarLancamento(${index})" title="Editar">✏️</button>
-                        <button class="btn-acao" onclick="excluirLancamento(${index})" title="Excluir">🗑️</button>
+                        <button class="btn-acao" onclick="editarLancamento(${realIndex})" title="Editar">✏️</button>
+                        <button class="btn-acao" onclick="excluirLancamento(${realIndex})" title="Excluir">🗑️</button>
                     </td>
                 `;
                 corpo.appendChild(linha);
@@ -530,7 +582,15 @@
             let totalEntradas = 0;
             let totalSaidas = 0;
 
-            lancamentos.forEach(item => {
+            const mesFiltroGrafico = document.getElementById('filtro-mes-grafico').value;
+
+            // Filtra os lançamentos para o cálculo e gráfico do mês selecionado
+            const lancamentosGrafico = lancamentos.filter(item => {
+                if (mesFiltroGrafico === 'all') return true;
+                return item.data.startsWith(mesFiltroGrafico);
+            });
+
+            lancamentosGrafico.forEach(item => {
                 const val = parseFloat(item.valor);
                 if (item.tipo === 'Entrada') {
                     totalEntradas += val;
