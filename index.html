@@ -318,7 +318,7 @@
         ];
         
         let usuariosCadastrados = [
-            { nome: 'rafael', senha: '123' },
+            { nome: 'rafael', senha: '145565' },
             { nome: 'sara', senha: '123' }
         ];
 
@@ -549,8 +549,7 @@
 
             const mesFiltro = document.getElementById('filtro-mes').value;
 
-            // Filtra os lançamentos com base no mês selecionado (YYYY-MM extraído da data)
-            const lancamentosFiltrados = lancamentos.filter((item, index) => {
+            const lancamentosFiltrados = lancamentos.filter((item) => {
                 if (mesFiltro === 'all') return true;
                 return item.data.startsWith(mesFiltro);
             });
@@ -561,7 +560,6 @@
             }
 
             lancamentosFiltrados.forEach((item) => {
-                // Acha o índice real no array principal para editar/excluir certo
                 const realIndex = lancamentos.indexOf(item);
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
@@ -584,7 +582,6 @@
 
             const mesFiltroGrafico = document.getElementById('filtro-mes-grafico').value;
 
-            // Filtra os lançamentos para o cálculo e gráfico do mês selecionado
             const lancamentosGrafico = lancamentos.filter(item => {
                 if (mesFiltroGrafico === 'all') return true;
                 return item.data.startsWith(mesFiltroGrafico);
