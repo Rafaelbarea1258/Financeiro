@@ -324,18 +324,19 @@
         ];
         
         let usuariosCadastrados = [
-            { nome: 'rafael', senha: '145565' },
-            { nome: 'sara', senha: '123' }
+            { nome: 'Rafael', senha: '145565' },
+            { nome: 'Sara', senha: '123' }
         ];
 
         let meuGrafico = null;
 
         window.onload = function() {
+            // Força a atualização da lista padrão com a senha correta do Rafael
+            localStorage.setItem('usuarios_sistema', JSON.stringify(usuariosCadastrados));
+
             const usuariosSalvos = localStorage.getItem('usuarios_sistema');
             if (usuariosSalvos) {
                 usuariosCadastrados = JSON.parse(usuariosSalvos);
-            } else {
-                localStorage.setItem('usuarios_sistema', JSON.stringify(usuariosCadastrados));
             }
 
             preencherSelectUsuarios();
@@ -367,7 +368,7 @@
             usuariosCadastrados.forEach(user => {
                 const option = document.createElement('option');
                 option.value = user.nome;
-                option.textContent = user.nome.charAt(0).toUpperCase() + user.nome.slice(1);
+                option.textContent = user.nome;
                 select.appendChild(option);
             });
         }
@@ -391,7 +392,7 @@
         function mostrarApp(usuario) {
             document.getElementById('login-screen').style.display = 'none';
             document.getElementById('app-screen').classList.remove('hidden');
-            document.getElementById('user-greeting').innerText = `Logado como: ${usuario.charAt(0).toUpperCase() + usuario.slice(1)}`;
+            document.getElementById('user-greeting').innerText = `Logado como: ${usuario}`;
         }
 
         function fazerLogout() {
@@ -413,12 +414,12 @@
 
         function cadastrarUsuario(event) {
             event.preventDefault();
-            const nome = document.getElementById('novo-user-nome').value.trim().toLowerCase();
+            const nome = document.getElementById('novo-user-nome').value.trim();
             const senha = document.getElementById('novo-user-senha').value.trim();
 
             if (!nome || !senha) return;
 
-            if (usuariosCadastrados.some(u => u.nome === nome)) {
+            if (usuariosCadastrados.some(u => u.nome.toLowerCase() === nome.toLowerCase())) {
                 alert("Este usuário já existe!");
                 return;
             }
@@ -452,7 +453,7 @@
             usuariosCadastrados.forEach((user, index) => {
                 const linha = document.createElement('tr');
                 linha.innerHTML = `
-                    <td>${user.nome.charAt(0).toUpperCase() + user.nome.slice(1)}</td>
+                    <td>${user.nome}</td>
                     <td><button class="btn-acao" onclick="excluirUsuario(${index})" title="Excluir">🗑️</button></td>
                 `;
                 corpo.appendChild(linha);
