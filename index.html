@@ -65,7 +65,7 @@
         .text-green { color: #27ae60; }
         .text-red { color: #e74c3c; }
 
-        .resultado-simulacao { padding: 15px; border-radius: 6px; margin-top: 15px; font-weight: 600; display: none; }
+        .resultado-simulacao { padding: 15px; border-radius: 6px; margin-top: 15px; font-weight: 600; display: none; line-height: 1.6; }
         .sim-positivo { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
         .sim-negativo { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
@@ -198,16 +198,34 @@
                 <!-- ABA SIMULADOR DE COMPRA -->
                 <div id="tab-simulacao" class="tab-content">
                     <div class="card">
-                        <h3>🛍️ Simulador de Compra (Projeção 12 Meses)</h3>
-                        <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Informe o que você pretende comprar e o valor. O sistema analisará a sua média financeira atual projetada para os próximos 12 meses para avaliar o impacto e o risco.</p>
+                        <h3>🛍️ Simulador de Compra Parcelada (Projeção 12 Meses)</h3>
+                        <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Informe o produto, o valor total e em quantas parcelas deseja pagar. O sistema vai analisar o impacto da parcela mensal frente ao seu saldo projetado para os próximos 12 meses.</p>
                         
                         <label>O que você pretende comprar?</label>
-                        <input type="text" id="sim-produto" placeholder="Ex: Moto nova, Geladeira, Viagem...">
+                        <input type="text" id="sim-produto" placeholder="Ex: Celular novo, Moto, Geladeira...">
 
-                        <label>Valor da Compra (R$)</label>
+                        <label>Valor Total da Compra (R$)</label>
                         <input type="number" step="0.01" id="sim-valor" placeholder="0.00">
 
-                        <button type="button" class="btn-primary" onclick="analisarCompra()">Analisar Viabilidade</button>
+                        <label>Quantidade de Parcelas</label>
+                        <select id="sim-parcelas">
+                            <option value="1">À vista (1x)</option>
+                            <option value="2">2 vezes</option>
+                            <option value="3">3 vezes</option>
+                            <option value="4">4 vezes</option>
+                            <option value="5">5 vezes</option>
+                            <option value="6">6 vezes</option>
+                            <option value="7">7 vezes</option>
+                            <option value="8">8 vezes</option>
+                            <option value="9">9 vezes</option>
+                            <option value="10">10 vezes</option>
+                            <option value="11">11 vezes</option>
+                            <option value="12" selected>12 vezes</option>
+                            <option value="18">18 vezes</option>
+                            <option value="24">24 vezes</option>
+                        </select>
+
+                        <button type="button" class="btn-primary" onclick="analisarCompra()">Analisar Viabilidade do Parcelamento</button>
 
                         <div id="resultado-simulacao" class="resultado-simulacao"></div>
                     </div>
@@ -452,11 +470,12 @@
 
         function analisarCompra() {
             const produto = document.getElementById('sim-produto').value;
-            const valorCompra = parseFloat(document.getElementById('sim-valor').value);
+            const valorTotal = parseFloat(document.getElementById('sim-valor').value);
+            const parcelas = parseInt(document.getElementById('sim-parcelas').value);
             const divResultado = document.getElementById('resultado-simulacao');
 
-            if (!produto || isNaN(valorCompra) || valorCompra <= 0) {
-                alert("Por favor, preencha o nome do item e um valor válido.");
+            if (!produto || isNaN(valorTotal) || valorTotal <= 0) {
+                alert("Por favor, preencha o nome do produto e um valor válido.");
                 return;
             }
 
@@ -469,24 +488,25 @@
                 else totalSaidas += val;
             });
 
-            // Projeção para 12 meses
             const saldoMensalAtual = totalEntradas - totalSaidas;
-            const saldoProjetado12Meses = saldoMensalAtual * 12;
+            const valorParcela = valorTotal / parcelas;
 
             divResultado.style.display = 'block';
 
-            if (saldoProjetado12Meses >= valorCompra) {
-                let risco = Math.min(100, Math.round((valorCompra / (saldoProjetado12Meses > 0 ? saldoProjetado12Meses : 1)) * 100));
+            // Verifica se o saldo mensal consegue absorver a parcela
+            if (saldoMensalAtual >= valorParcela) {
+                let comprometimento = Math.round((valorParcela / (saldoMensalAtual > 0 ? saldoMensalAtual : 1)) * 100);
                 divResultado.className = "resultado-simulacao sim-positivo";
-                divResultado.innerHTML = `✅ **Viável!** Com base na sua projeção para os próximos 12 meses, você pode comprar <strong>${produto}</strong>.<br>
-                • Saldo projetado em 12 meses: R$ ${saldoProjetado12Meses.toFixed(2)}<br>
-                • Risco estimado da compra: <strong>${risco}%</strong> do seu saldo anual projetado.`;
+                divResultado.innerHTML = `✅ **Viável comprar em ${parcelas}x!**<br>
+                • Produto: <strong>${produto}</strong> (Total: R$ ${valorTotal.toFixed(2)})<br>
+                • Valor da parcela mensal: <strong>R$ ${valorParcela.toFixed(2)} por mês</strong> (${parcelas}x)<br>
+                • Impacto no seu saldo mensal: Comprometerá cerca de <strong>${comprometimento}%</strong> do seu saldo livre mensal atual.`;
             } else {
-                let deficit = valorCompra - saldoProjetado12Meses;
                 divResultado.className = "resultado-simulacao sim-negativo";
-                divResultado.innerHTML = `❌ **Atenção / Inviável no momento!** A compra de <strong>${produto}</strong> compromete suas finanças projetadas para os próximos 12 meses.<br>
-                • Você ficaria com um déficit de aprox. R$ ${deficit.toFixed(2)} considerando o ritmo atual.<br>
-                • Risco de endividamento / impacto elevado no orçamento.`;
+                divResultado.innerHTML = `❌ **Atenção / Alto Risco!**<br>
+                • Produto: <strong>${produto}</strong> (Total: R$ ${valorTotal.toFixed(2)})<br>
+                • A parcela de <strong>R$ ${valorParcela.toFixed(2)}</strong> excede o seu saldo mensal atual (R$ ${saldoMensalAtual.toFixed(2)}).<br>
+                • O parcelamento em ${parcelas}x deixará seu orçamento mensal no vermelho.`;
             }
         }
     </script>
