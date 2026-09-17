@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Financeiro Casa</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background: #f4f6f9; min-height: 100vh; overflow-x: hidden; }
+
+    /* TELA DE LOGIN */
+    #login-screen {
+        position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+        background: linear-gradient(135deg, #e07a7a 0%, #70a1a1 100%);
+        display: flex; justify-content: center; align-items: center; z-index: 9999;
+        padding: 16px;
+    }
+    .login-card {
+        background: #ffffff; padding: 40px; border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15); width: 100%; max-width: 380px; text-align: center;
+        max-height: calc(100vh - 32px); overflow-y: auto;
+    }
+    .login-card h2 { margin-bottom: 8px; color: #2d3748; }
+    .login-status { font-size: 0.8rem; color: #718096; margin-bottom: 16px; min-height: 1.2em; }
+    .login-card label { text-align: left; display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
+    .login-card input, .login-card select {
+        width: 100%; padding: 12px; margin-bottom: 15px; border: 1px solid #cbd5e0; border-radius: 6px; font-size: 1rem; background: #fff;
+    }
+    .btn-login {
+        background: #ff6b6b; color: white; border: none; padding: 12px; width: 100%;
+        border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 1rem;
+    }
+    .btn-login:hover:not(:disabled) { background: #fa5252; }
+    .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
+    .btn-retry { background: #edf2f7; color: #2d3748; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: -5px; margin-bottom: 15px; display: none; }
+
+    /* APLICAÇÃO */
+    #app-screen { width: 100%; min-height: 100vh; display: flex; flex-wrap: wrap; }
+    .sidebar { width: 260px; flex-shrink: 0; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+    .sidebar-brand { padding: 20px; font-size: 1.1rem; font-weight: bold; color: #ff6b6b; border-bottom: 1px solid #edf2f7; }
+    .sidebar-menu { list-style: none; padding: 15px 0; }
+    .sidebar-menu li a { display: block; padding: 12px 20px; color: #4a5568; text-decoration: none; font-weight: 500; cursor: pointer; }
+    .sidebar-menu li a:hover, .sidebar-menu li a.active { background: #fff5f5; color: #ff6b6b; border-right: 4px solid #ff6b6b; }
+
+    .main-container { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; }
+    .topbar { background: #ffffff; min-height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 12px 16px; gap: 10px; flex-wrap: wrap; row-gap: 8px; }
+    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }
+    .sync-badge.ok { background: #d4edda; color: #155724; }
+    .sync-badge.warn { background: #fff3cd; color: #856404; }
+    #user-greeting { font-size: 0.9rem; overflow-wrap: anywhere; }
+    .btn-logout { background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+
+    .content { padding: 30px; max-width: 100%; overflow-x: hidden; }
+    .card { background: white; border-radius: 8px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 25px; max-width: 100%; }
+    label { display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
+    input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; margin-bottom: 15px; font-size: 1rem; }
+    .btn-primary { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
+    .btn-primary:hover:not(:disabled) { background: #219653; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media(max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+
+    @media(max-width: 720px) {
+        #app-screen { flex-direction: column; }
+        .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; }
+        .sidebar-menu { display: flex; flex-wrap: wrap; padding: 8px; gap: 4px; }
+        .sidebar-menu li a { padding: 8px 12px; border-radius: 6px; }
+        .sidebar-menu li a:hover, .sidebar-menu li a.active { border-right: none; }
+        .content { padding: 16px; }
+        .topbar { justify-content: space-between; padding: 10px 14px; }
+    }
+
+    @media(max-width: 480px) {
+        .login-card { padding: 24px; }
+        .card { padding: 16px; }
+        .content { padding: 12px; }
+        .sidebar-brand { padding: 14px 16px; font-size: 1rem; }
+        h3 { font-size: 1.05rem; }
+        .grafico-wrap { height: 240px !important; }
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 480px; }
+    th { text-align: left; padding: 12px; font-size: 0.85rem; color: #718096; background: #f7fafc; border-bottom: 1px solid #e2e8f0; white-space: nowrap; }
+    td { padding: 12px; font-size: 0.9rem; border-bottom: 1px solid #edf2f7; }
+    .table-scroll { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    .btn-pagar { background: #3182ce; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
+    .btn-pagar:hover { background: #2b6cb0; }
+
+    .btn-acao { background: none; border: none; cursor: pointer; font-size: 1rem; margin-right: 8px; }
+    .btn-acao:hover { opacity: 0.7; }
+
+    .resumo-box { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: #f7fafc; border-radius: 6px; margin-bottom: 15px; border: 1px solid #e2e8f0; flex-wrap: wrap; gap: 8px; }
+    .resumo-box span { font-size: 1.2rem; font-weight: bold; }
+    .text-green { color: #27ae60; }
+    .text-red { color: #e74c3c; }
+    .text-blue { color: #3182ce; }
+
+    .resultado-simulacao { padding: 15px; border-radius: 6px; margin-top: 15px; font-weight: 600; display: none; line-height: 1.6; }
+    .sim-positivo { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .sim-negativo { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+
+    .filtro-mes-container { display: flex; align-items: center; gap: 15px; margin-bottom: 20px; background: #f7fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; flex-wrap: wrap; }
+    .filtro-mes-container select { margin-bottom: 0; max-width: 250px; }
+
+    .resumo-card { display: flex; flex-wrap: wrap; gap: 20px; }
+    .resumo-item { flex: 1; min-width: 140px; }
+    .resumo-item h4 { color: #718096; font-size: 0.85rem; margin-bottom: 6px; }
+    .resumo-item p { font-size: 1.4rem; font-weight: bold; }
+
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .hidden { display: none !important; }
+    .error-msg { color: #e74c3c; font-size: 0.85rem; margin-bottom: 10px; display: none; }
+    .empty-msg { text-align: center; color: #718096; }
+</style>
+</head>
+<body>
+
+<!-- TELA DE LOGIN OBRIGATÓRIA -->
+<div id="login-screen">
+    <div class="login-card">
+        <h2>Financeiro Casa</h2>
+        <div id="login-status" class="login-status">Conectando…</div>
+        <div id="login-erro" class="error-msg">Senha incorreta!</div>
+        <button type="button" class="btn-retry" id="btn-retry" onclick="iniciarApp()">Tentar novamente</button>
+        <form onsubmit="fazerLogin(event)">
+            <label>Selecione o Usuário</label>
+            <select id="login-usuario"></select>
+
+            <label>Senha</label>
+            <input type="password" id="login-senha" placeholder="Digite sua senha" required>
+            <button type="submit" class="btn-login" id="btn-login" disabled>Entrar</button>
+        </form>
+    </div>
+</div>
+
+<!-- APLICAÇÃO PRINCIPAL -->
+<div id="app-screen" class="hidden">
+    <div class="sidebar">
+        <div class="sidebar-brand">Financeiro Casa</div>
+        <ul class="sidebar-menu">
+            <li><a class="active" onclick="mudarAba('lancamentos', this)">Lançamentos</a></li>
+            <li><a onclick="mudarAba('graficos', this)">Gráficos &amp; Equilíbrio</a></li>
+            <li><a onclick="mudarAba('simulacao', this)">Simulador de Compra</a></li>
+            <li><a onclick="mudarAba('categorias', this)">Gerenciar Categorias</a></li>
+            <li><a onclick="mudarAba('usuarios', this)">Gerenciar Usuários</a></li>
+        </ul>
+    </div>
+
+    <div class="main-container">
+        <div class="topbar">
+            <span id="sync-badge" class="sync-badge">Conectando…</span>
+            <span id="user-greeting">Olá</span>
+            <button class="btn-logout" onclick="fazerLogout()">Sair</button>
+        </div>
+
+        <div class="content">
+
+            <!-- ABA LANÇAMENTOS -->
+            <div id="tab-lancamentos" class="tab-content active">
+                <div class="card" style="border-left: 4px solid #f39c12;">
+                    <h3>🔔 Contas a Vencer (Próximos 15 dias)</h3>
+                    <div class="table-scroll">
+                    <table>
+                        <thead>
+                            <tr><th>Vencimento</th><th>Conta / Descrição</th><th>Valor</th><th>Ação</th></tr>
+                        </thead>
+                        <tbody id="tabela-vencimentos"></tbody>
+                    </table>
+                    </div>
+                </div>
+
+                <div class="filtro-mes-container">
+                    <label for="filtro-mes" style="margin-bottom:0; font-weight:bold;">Orçamento do Mês:</label>
+                    <select id="filtro-mes" onchange="mudarMesOrcamento()">
+                        <option value="2026-01">Janeiro / 2026</option>
+                        <option value="2026-02">Fevereiro / 2026</option>
+                        <option value="2026-03">Março / 2026</option>
+                        <option value="2026-04">Abril / 2026</option>
+                        <option value="2026-05">Maio / 2026</option>
+                        <option value="2026-06">Junho / 2026</option>
+                        <option value="2026-07">Julho / 2026</option>
+                        <option value="2026-08">Agosto / 2026</option>
+                        <option value="2026-09" selected>Setembro / 2026</option>
+                        <option value="2026-10">Outubro / 2026</option>
+                        <option value="2026-11">Novembro / 2026</option>
+                        <option value="2026-12">Dezembro / 2026</option>
+                    </select>
+                </div>
+
+                <div class="grid-2">
+                    <div class="card">
+                        <h3 id="titulo-form">Novo Lançamento</h3>
+                        <form onsubmit="salvarLancamento(event)">
+                            <input type="hidden" id="edit-index" value="-1">
+                            <label>Data do Lançamento</label>
+                            <input type="date" id="data" required>
+
+                            <label>Tipo</label>
+                            <select id="tipo" onchange="atualizarCategorias()">
+                                <option value="Entrada">Entrada</option>
+                                <option value="Saída">Saída</option>
+                            </select>
+
+                            <label>Categoria / Plano de Contas</label>
+                            <select id="categoria-input"></select>
+
+                            <div id="bloco-parcelas">
+                                <label>Quantidade de Parcelas / Meses</label>
+                                <select id="qtd-parcelas">
+                                    <option value="1">1 mês (À vista)</option>
+                                    <option value="2">2 meses</option>
+                                    <option value="3">3 meses</option>
+                                    <option value="4">4 meses</option>
+                                    <option value="5">5 meses</option>
+                                    <option value="6">6 meses</option>
+                                    <option value="7">7 meses</option>
+                                    <option value="8">8 meses</option>
+                                    <option value="9">9 meses</option>
+                                    <option value="10">10 meses</option>
+                                    <option value="11">11 meses</option>
+                                    <option value="12">12 meses</option>
+                                    <option value="15">15 meses</option>
+                                    <option value="18">18 meses</option>
+                                    <option value="24">24 meses</option>
+                                </select>
+                            </div>
+
+                            <label>Valor da Parcela (R$)</label>
+                            <input type="number" step="0.01" id="valor" placeholder="0.00" required>
+
+                            <button type="submit" class="btn-primary" id="btn-submit-text">Adicionar Lançamento</button>
+                        </form>
+                    </div>
+
+                    <div class="card">
+                        <h3>Resumo do Mês</h3>
+                        <div class="resumo-box"><strong>Entradas:</strong><span id="resumo-mes-entradas" class="text-green">R$ 0,00</span></div>
+                        <div class="resumo-box"><strong>Saídas:</strong><span id="resumo-mes-saidas" class="text-red">R$ 0,00</span></div>
+                        <div class="resumo-box"><strong>Saldo Final:</strong><span id="resumo-mes-saldo" class="text-blue">R$ 0,00</span></div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Lista de Lançamentos do Mês</h3>
+                    <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>
+                        <tbody id="tabela-corpo"></tbody>
+                    </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA GRÁFICOS E EQUILÍBRIO -->
+            <div id="tab-graficos" class="tab-content">
+                <div class="filtro-mes-container">
+                    <label for="filtro-mes-grafico" style="margin-bottom:0; font-weight:bold;">Mês do Gráfico:</label>
+                    <select id="filtro-mes-grafico" onchange="atualizarGraficoEEquilibrio()">
+                        <option value="2026-01">Janeiro / 2026</option>
+                        <option value="2026-02">Fevereiro / 2026</option>
+                        <option value="2026-03">Março / 2026</option>
+                        <option value="2026-04">Abril / 2026</option>
+                        <option value="2026-05">Maio / 2026</option>
+                        <option value="2026-06">Junho / 2026</option>
+                        <option value="2026-07">Julho / 2026</option>
+                        <option value="2026-08">Agosto / 2026</option>
+                        <option value="2026-09" selected>Setembro / 2026</option>
+                        <option value="2026-10">Outubro / 2026</option>
+                        <option value="2026-11">Novembro / 2026</option>
+                        <option value="2026-12">Dezembro / 2026</option>
+                    </select>
+                </div>
+
+                <div class="card resumo-card">
+                    <div class="resumo-item"><h4>Total Entradas</h4><p id="resumo-entradas" class="text-green">R$ 0,00</p></div>
+                    <div class="resumo-item"><h4>Total Saídas</h4><p id="resumo-saidas" class="text-red">R$ 0,00</p></div>
+                    <div class="resumo-item"><h4>Equilíbrio Mensal</h4><p id="resumo-equilibrio">R$ 0,00</p></div>
+                </div>
+
+                <div class="card">
+                    <h3>Gráfico Mensal: Entradas vs Saídas</h3>
+                    <div class="grafico-wrap" style="width: 100%; max-width: 600px; margin: 0 auto; height: 320px;">
+                        <canvas id="graficoMensal"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA SIMULADOR DE COMPRA -->
+            <div id="tab-simulacao" class="tab-content">
+                <div class="card">
+                    <h3>🛍️ Simulador de Compra Parcelada (Projeção 12 Meses)</h3>
+                    <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Informe o produto, o valor total e escolha a quantidade de parcelas para verificar a viabilidade com base na sua projeção financeira de 12 meses.</p>
+
+                    <label>O que você pretende comprar?</label>
+                    <input type="text" id="sim-produto" placeholder="Ex: Celular, Moto, Geladeira...">
+
+                    <label>Valor Total da Compra (R$)</label>
+                    <input type="number" step="0.01" id="sim-valor" placeholder="0.00">
+
+                    <label>Quantidade de Parcelas</label>
+                    <select id="sim-parcelas">
+                        <option value="1">À vista (1x)</option>
+                        <option value="2">2 vezes</option>
+                        <option value="3">3 vezes</option>
+                        <option value="4">4 vezes</option>
+                        <option value="5">5 vezes</option>
+                        <option value="6">6 vezes</option>
+                        <option value="7">7 vezes</option>
+                        <option value="8">8 vezes</option>
+                        <option value="9">9 vezes</option>
+                        <option value="10">10 vezes</option>
+                        <option value="11">11 vezes</option>
+                        <option value="12">12 vezes</option>
+                        <option value="15">15 vezes</option>
+                        <option value="18">18 vezes</option>
+                        <option value="24">24 vezes</option>
+                    </select>
+
+                    <button type="button" class="btn-primary" onclick="analisarCompra()">Analisar Viabilidade do Parcelamento</button>
+
+                    <div id="resultado-simulacao" class="resultado-simulacao"></div>
+                </div>
+            </div>
+
+            <!-- ABA GERENCIAR CATEGORIAS -->
+            <div id="tab-categorias" class="tab-content">
+                <div class="card">
+                    <h3>🏷️ Cadastrar Nova Categoria</h3>
+                    <form onsubmit="cadastrarCategoria(event)">
+                        <label>Tipo de Categoria</label>
+                        <select id="nova-cat-tipo">
+                            <option value="Entrada">Entrada</option>
+                            <option value="Saída">Saída</option>
+                        </select>
+
+                        <label>Nome da Categoria</label>
+                        <input type="text" id="nova-cat-nome" placeholder="Ex: Mercado, Luz, Aluguel..." required>
+
+                        <button type="submit" class="btn-primary">Adicionar Categoria</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>Categorias Cadastradas</h3>
+                    <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>Tipo</th><th>Nome da Categoria</th><th>Ação</th></tr></thead>
+                        <tbody id="tabela-categorias"></tbody>
+                    </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA GERENCIAR USUÁRIOS -->
+            <div id="tab-usuarios" class="tab-content">
+                <div class="card">
+                    <h3>👥 Cadastrar Novo Usuário</h3>
+                    <form onsubmit="cadastrarUsuario(event)">
+                        <label>Nome do Usuário</label>
+                        <input type="text" id="novo-user-nome" placeholder="Ex: Sara" required>
+
+                        <label>Senha de Acesso</label>
+                        <input type="password" id="novo-user-senha" placeholder="Digite a senha" required>
+
+                        <button type="submit" class="btn-primary">Criar Usuário</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>Usuários Cadastrados</h3>
+                    <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>Nome do Usuário</th><th>Ação</th></tr></thead>
+                        <tbody id="tabela-usuarios"></tbody>
+                    </table>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    // ---------------------------------------------------------------
+    // Configuração do Supabase (chave pública — segura para expor no
+    // navegador, desde que o RLS esteja habilitado, como no schema
+    // fornecido junto com este arquivo).
+    // ---------------------------------------------------------------
+    const SUPABASE_URL = 'https://kukrtjyuisxweyduslpu.supabase.co';
+    const SUPABASE_KEY = 'sb_publishable_bFN8yju7SiFW1jH_U_2rrw_JGBqmqmX';
+
+    let supabase = null;
+    let lancamentos = [];
+    let contasPendentes = [];
+    let categoriasCadastradas = [];
+    let usuariosCadastrados = [];
+    let meuGrafico = null;
+    let canaisRealtime = [];
+
+    function escapeHtml(str) {
+        return String(str).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]));
+    }
+
+    function setSyncBadge(texto, classe) {
+        const badge = document.getElementById('sync-badge');
+        badge.textContent = texto;
+        badge.className = 'sync-badge' + (classe ? ' ' + classe : '');
+    }
+    function setLoginStatus(texto) {
+        document.getElementById('login-status').textContent = texto;
+    }
+    function setLoginHabilitado(habilitado) {
+        document.getElementById('btn-login').disabled = !habilitado;
+    }
+
+    // ---------------------------------------------------------------
+    // Inicialização
+    // ---------------------------------------------------------------
+    window.iniciarApp = async function () {
+        document.getElementById('login-screen').style.display = 'flex';
+        document.getElementById('app-screen').classList.add('hidden');
+        document.getElementById('btn-retry').style.display = 'none';
+        document.getElementById('login-erro').style.display = 'none';
+        setLoginHabilitado(false);
+        setLoginStatus('Conectando…');
+        setSyncBadge('Conectando…', '');
+
+        try {
+            localStorage.removeItem('usuario_logado');
+        } catch (e) { /* ignore */ }
+
+        canaisRealtime.forEach(ch => { try { supabase.removeChannel(ch); } catch (e) {} });
+        canaisRealtime = [];
+
+        try {
+            if (!window.supabase || typeof window.supabase.createClient !== 'function') {
+                throw new Error('Biblioteca do Supabase não carregou.');
+            }
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+            await Promise.all([
+                carregarUsuarios(),
+                carregarCategorias(),
+                carregarContasPendentes(),
+                carregarLancamentos()
+            ]);
+
+            configurarRealtime();
+
+            setSyncBadge('🔄 Sincronizado', 'ok');
+            setLoginStatus(usuariosCadastrados.length ? '' : 'Nenhum usuário cadastrado ainda.');
+            setLoginHabilitado(true);
+        } catch (e) {
+            console.error(e);
+            setSyncBadge('⚠️ Sem conexão', 'warn');
+            setLoginStatus('Não foi possível conectar ao banco de dados agora.');
+            document.getElementById('btn-retry').style.display = 'block';
+        }
+    };
+
+    function configurarRealtime() {
+        const tabelas = [
+            ['usuarios', carregarUsuarios],
+            ['categorias', carregarCategorias],
+            ['contas_pendentes', carregarContasPendentes],
+            ['lancamentos', carregarLancamentos]
+        ];
+        tabelas.forEach(([tabela, recarregar]) => {
+            const canal = supabase
+                .channel('realtime-' + tabela)
+                .on('postgres_changes', { event: '*', schema: 'public', table: tabela }, () => {
+                    recarregar().catch(err => console.error(err));
+                })
+                .subscribe();
+            canaisRealtime.push(canal);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', iniciarApp);
+
+    // ---------------------------------------------------------------
+    // Carregamento de dados
+    // ---------------------------------------------------------------
+    async function carregarUsuarios() {
+        const { data, error } = await supabase.from('usuarios').select('*').order('created_at');
+        if (error) throw error;
+        usuariosCadastrados = data || [];
+        preencherSelectUsuarios();
+        atualizarTabelaUsuarios();
+    }
+
+    async function carregarCategorias() {
+        const { data, error } = await supabase.from('categorias').select('*').order('created_at');
+        if (error) throw error;
+        categoriasCadastradas = data || [];
+        atualizarCategorias();
+        atualizarTabelaCategorias();
+    }
+
+    async function carregarContasPendentes() {
+        const { data, error } = await supabase.from('contas_pendentes').select('*').order('vencimento');
+        if (error) throw error;
+        contasPendentes = data || [];
+        atualizarContasVencer();
+    }
+
+    async function carregarLancamentos() {
+        const { data, error } = await supabase.from('lancamentos').select('*').order('data');
+        if (error) throw error;
+        lancamentos = data || [];
+        atualizarTabela();
+        if (document.getElementById('tab-graficos').classList.contains('active')) {
+            atualizarGraficoEEquilibrio();
+        }
+    }
+
+    // ---------------------------------------------------------------
+    // Login
+    // ---------------------------------------------------------------
+    function preencherSelectUsuarios() {
+        const select = document.getElementById('login-usuario');
+        const valorAtual = select.value;
+        select.innerHTML = '';
+        usuariosCadastrados.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.nome;
+            option.textContent = user.nome;
+            select.appendChild(option);
+        });
+        if (valorAtual && usuariosCadastrados.some(u => u.nome === valorAtual)) {
+            select.value = valorAtual;
+        }
+    }
+
+    window.fazerLogin = function (event) {
+        event.preventDefault();
+        const usuarioEscolhido = document.getElementById('login-usuario').value;
+        const senhaDigitada = document.getElementById('login-senha').value.trim();
+
+        const usuarioEncontrado = usuariosCadastrados.find(u => u.nome === usuarioEscolhido && u.senha === senhaDigitada);
+
+        if (usuarioEncontrado) {
+            document.getElementById('login-erro').style.display = 'none';
+            try { localStorage.setItem('usuario_logado', usuarioEncontrado.nome); } catch (e) {}
+            mostrarApp(usuarioEncontrado.nome);
+        } else {
+            document.getElementById('login-erro').style.display = 'block';
+        }
+    };
+
+    function mostrarApp(usuario) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').classList.remove('hidden');
+        document.getElementById('user-greeting').innerText = `Logado como: ${usuario}`;
+    }
+
+    window.fazerLogout = function () {
+        try { localStorage.removeItem('usuario_logado'); } catch (e) {}
+        location.reload();
+    };
+
+    window.mudarAba = function (abaId, elemento) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+        document.getElementById(`tab-${abaId}`).classList.add('active');
+        elemento.classList.add('active');
+        if (abaId === 'graficos') atualizarGraficoEEquilibrio();
+    };
+
+    window.mudarMesOrcamento = function () {
+        const mesSelecionado = document.getElementById('filtro-mes').value;
+        const inputData = document.getElementById('data');
+        let diaAtual = "16";
+        if (inputData.value) {
+            const partes = inputData.value.split('-');
+            if (partes.length === 3) diaAtual = partes[2];
+        }
+        inputData.value = `${mesSelecionado}-${diaAtual}`;
+        atualizarTabela();
+    };
+
+    // ---------------------------------------------------------------
+    // Categorias
+    // ---------------------------------------------------------------
+    window.cadastrarCategoria = async function (event) {
+        event.preventDefault();
+        const tipo = document.getElementById('nova-cat-tipo').value;
+        const nome = document.getElementById('nova-cat-nome').value.trim();
+        if (!nome) return;
+
+        if (categoriasCadastradas.some(c => c.tipo === tipo && c.nome.toLowerCase() === nome.toLowerCase())) {
+            alert("Esta categoria já existe para este tipo!");
+            return;
+        }
+
+        const { error } = await supabase.from('categorias').insert({ tipo, nome });
+        if (error) { alert("Não foi possível salvar a categoria agora. Tente novamente."); return; }
+        await carregarCategorias();
+        event.target.reset();
+        alert("Categoria cadastrada com sucesso!");
+    };
+
+    window.excluirCategoria = async function (id) {
+        if (!confirm("Deseja realmente excluir esta categoria?")) return;
+        const { error } = await supabase.from('categorias').delete().eq('id', id);
+        if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
+        await carregarCategorias();
+    };
+
+    function atualizarTabelaCategorias() {
+        const corpo = document.getElementById('tabela-categorias');
+        corpo.innerHTML = '';
+        if (categoriasCadastradas.length === 0) {
+            corpo.innerHTML = `<tr><td colspan="3" class="empty-msg">Nenhuma categoria cadastrada.</td></tr>`;
+            return;
+        }
+        categoriasCadastradas.forEach((cat) => {
+            const linha = document.createElement('tr');
+            linha.innerHTML = `
+                <td>${escapeHtml(cat.tipo)}</td>
+                <td>${escapeHtml(cat.nome)}</td>
+                <td><button class="btn-acao" onclick="excluirCategoria('${cat.id}')" title="Excluir">🗑️</button></td>
+            `;
+            corpo.appendChild(linha);
+        });
+    }
+
+    // ---------------------------------------------------------------
+    // Usuários
+    // ---------------------------------------------------------------
+    window.cadastrarUsuario = async function (event) {
+        event.preventDefault();
+        const nome = document.getElementById('novo-user-nome').value.trim();
+        const senha = document.getElementById('novo-user-senha').value.trim();
+        if (!nome || !senha) return;
+
+        if (usuariosCadastrados.some(u => u.nome.toLowerCase() === nome.toLowerCase())) {
+            alert("Este usuário já existe!");
+            return;
+        }
+
+        const { error } = await supabase.from('usuarios').insert({ nome, senha });
+        if (error) { alert("Não foi possível salvar o usuário agora. Tente novamente."); return; }
+        await carregarUsuarios();
+        event.target.reset();
+        alert("Usuário cadastrado com sucesso!");
+    };
+
+    window.excluirUsuario = async function (id) {
+        if (usuariosCadastrados.length <= 1) {
+            alert("Você precisa manter pelo menos um usuário no sistema!");
+            return;
+        }
+        if (!confirm("Deseja realmente excluir este usuário?")) return;
+        const { error } = await supabase.from('usuarios').delete().eq('id', id);
+        if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
+        await carregarUsuarios();
+    };
+
+    function atualizarTabelaUsuarios() {
+        const corpo = document.getElementById('tabela-usuarios');
+        corpo.innerHTML = '';
+        usuariosCadastrados.forEach((user) => {
+            const linha = document.createElement('tr');
+            linha.innerHTML = `
+                <td>${escapeHtml(user.nome)}</td>
+                <td><button class="btn-acao" onclick="excluirUsuario('${user.id}')" title="Excluir">🗑️</button></td>
+            `;
+            corpo.appendChild(linha);
+        });
+    }
+
+    window.atualizarCategorias = function () {
+        const tipo = document.getElementById('tipo').value;
+        const selectCategoria = document.getElementById('categoria-input');
+        const blocoParcelas = document.getElementById('bloco-parcelas');
+        selectCategoria.innerHTML = '';
+
+        if (tipo === 'Saída') {
+            blocoParcelas.style.display = 'block';
+        } else {
+            blocoParcelas.style.display = 'none';
+            document.getElementById('qtd-parcelas').value = '1';
+        }
+
+        const filtradas = categoriasCadastradas.filter(c => c.tipo === tipo);
+        if (filtradas.length === 0) {
+            const option = document.createElement('option');
+            option.value = "";
+            option.textContent = "Nenhuma categoria cadastrada";
+            selectCategoria.appendChild(option);
+            return;
+        }
+        filtradas.forEach(cat => {
+            const option = document.createElement('option');
+            option.value = cat.nome;
+            option.textContent = cat.nome;
+            selectCategoria.appendChild(option);
+        });
+    };
+
+    // ---------------------------------------------------------------
+    // Contas a vencer
+    // ---------------------------------------------------------------
+    function atualizarContasVencer() {
+        const corpo = document.getElementById('tabela-vencimentos');
+        corpo.innerHTML = '';
+
+        const hoje = new Date();
+        const daqui15Dias = new Date();
+        daqui15Dias.setDate(hoje.getDate() + 15);
+
+        let filtradas = contasPendentes.filter(conta => {
+            const dataVenc = new Date(conta.vencimento + 'T00:00:00');
+            return dataVenc >= new Date(hoje.toISOString().split('T')[0] + 'T00:00:00') && dataVenc <= daqui15Dias;
+        });
+
+        if (filtradas.length === 0) {
+            corpo.innerHTML = `<tr><td colspan="4" class="empty-msg">Nenhuma conta vencendo nos próximos 15 dias.</td></tr>`;
+            return;
+        }
+
+        filtradas.forEach(conta => {
+            const linha = document.createElement('tr');
+            linha.innerHTML = `
+                <td>${conta.vencimento.split('-').reverse().join('/')}</td>
+                <td>${escapeHtml(conta.descricao)}</td>
+                <td>R$ ${parseFloat(conta.valor).toFixed(2)}</td>
+                <td><button class="btn-pagar" onclick="marcarComoPago('${conta.id}')">Já Paguei ✓</button></td>
+            `;
+            corpo.appendChild(linha);
+        });
+    }
+
+    window.marcarComoPago = async function (id) {
+        const { error } = await supabase.from('contas_pendentes').delete().eq('id', id);
+        if (error) { alert("Não foi possível atualizar agora. Tente novamente."); return; }
+        await carregarContasPendentes();
+    };
+
+    // ---------------------------------------------------------------
+    // Lançamentos
+    // ---------------------------------------------------------------
+    window.salvarLancamento = async function (event) {
+        event.preventDefault();
+
+        const editId = document.getElementById('edit-index').value;
+        const dataInicial = document.getElementById('data').value;
+        const tipo = document.getElementById('tipo').value;
+        const categoria = document.getElementById('categoria-input').value;
+        const valorParcelaDigitado = parseFloat(document.getElementById('valor').value).toFixed(2);
+        const qtdParcelas = tipo === 'Saída' ? parseInt(document.getElementById('qtd-parcelas').value) : 1;
+
+        if (!categoria) {
+            alert("Selecione ou cadastre uma categoria antes de salvar.");
+            return;
+        }
+
+        if (editId === '-1' || !editId) {
+            const novos = [];
+            for (let i = 0; i < qtdParcelas; i++) {
+                let dataObj = new Date(dataInicial + 'T00:00:00');
+                dataObj.setMonth(dataObj.getMonth() + i);
+                let dataFormatada = dataObj.toISOString().split('T')[0];
+                let nomeCategoria = qtdParcelas > 1 ? `${categoria} (${i + 1}/${qtdParcelas})` : categoria;
+                novos.push({ data: dataFormatada, tipo: tipo, categoria: nomeCategoria, valor: valorParcelaDigitado });
+            }
+            const { error } = await supabase.from('lancamentos').insert(novos);
+            if (error) { alert("Não foi possível salvar o lançamento agora. Tente novamente."); return; }
+        } else {
+            const atualizado = { data: dataInicial, tipo: tipo, categoria: categoria, valor: valorParcelaDigitado };
+            const { error } = await supabase.from('lancamentos').update(atualizado).eq('id', editId);
+            if (error) { alert("Não foi possível salvar as alterações agora. Tente novamente."); return; }
+            document.getElementById('edit-index').value = -1;
+            document.getElementById('titulo-form').innerText = "Novo Lançamento";
+            document.getElementById('btn-submit-text').innerText = "Adicionar Lançamento";
+        }
+
+        await carregarLancamentos();
+        event.target.reset();
+        mudarMesOrcamento();
+        atualizarCategorias();
+    };
+
+    window.editarLancamento = function (id) {
+        const item = lancamentos.find(l => l.id === id);
+        if (!item) return;
+        document.getElementById('data').value = item.data;
+        document.getElementById('tipo').value = item.tipo;
+        atualizarCategorias();
+        document.getElementById('categoria-input').value = item.categoria.split(' (')[0];
+        document.getElementById('valor').value = item.valor;
+        document.getElementById('qtd-parcelas').value = '1';
+
+        document.getElementById('edit-index').value = id;
+        document.getElementById('titulo-form').innerText = "Editar Lançamento";
+        document.getElementById('btn-submit-text').innerText = "Salvar Alterações";
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    window.excluirLancamento = async function (id) {
+        const itemSelecionado = lancamentos.find(l => l.id === id);
+        if (!itemSelecionado) return;
+        const nomeBaseCategoria = itemSelecionado.categoria.split(' (')[0];
+
+        if (!confirm(`Deseja realmente excluir este lançamento e todas as outras parcelas/meses associados a "${nomeBaseCategoria}"?`)) return;
+
+        const relacionados = lancamentos.filter(item => {
+            const itemBase = item.categoria.split(' (')[0];
+            return itemBase === nomeBaseCategoria && item.tipo === itemSelecionado.tipo;
+        });
+
+        const { error } = await supabase.from('lancamentos').delete().in('id', relacionados.map(r => r.id));
+        if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
+        await carregarLancamentos();
+    };
+
+    function atualizarTabela() {
+        const corpo = document.getElementById('tabela-corpo');
+        corpo.innerHTML = '';
+
+        const mesFiltro = document.getElementById('filtro-mes').value;
+        const lancamentosFiltrados = lancamentos.filter((item) => {
+            if (mesFiltro === 'all') return true;
+            return item.data.startsWith(mesFiltro);
+        });
+
+        let totalEntradas = 0;
+        let totalSaidas = 0;
+        lancamentosFiltrados.forEach((item) => {
+            const val = parseFloat(item.valor);
+            if (item.tipo === 'Entrada') totalEntradas += val; else totalSaidas += val;
+        });
+
+        const saldoFinal = totalEntradas - totalSaidas;
+        document.getElementById('resumo-mes-entradas').innerText = `R$ ${totalEntradas.toFixed(2)}`;
+        document.getElementById('resumo-mes-saidas').innerText = `R$ ${totalSaidas.toFixed(2)}`;
+        const spanSaldo = document.getElementById('resumo-mes-saldo');
+        spanSaldo.innerText = `R$ ${saldoFinal.toFixed(2)}`;
+        spanSaldo.className = saldoFinal >= 0 ? 'text-green' : 'text-red';
+
+        if (lancamentosFiltrados.length === 0) {
+            corpo.innerHTML = `<tr><td colspan="5" class="empty-msg">Nenhum lançamento encontrado para este mês.</td></tr>`;
+            return;
+        }
+
+        lancamentosFiltrados.forEach((item) => {
+            const linha = document.createElement('tr');
+            linha.innerHTML = `
+                <td>${item.data.split('-').reverse().join('/')}</td>
+                <td>${escapeHtml(item.tipo)}</td>
+                <td>${escapeHtml(item.categoria)}</td>
+                <td>R$ ${item.valor}</td>
+                <td>
+                    <button class="btn-acao" onclick="editarLancamento('${item.id}')" title="Editar">✏️</button>
+                    <button class="btn-acao" onclick="excluirLancamento('${item.id}')" title="Excluir Todas as Parcelas">🗑️</button>
+                </td>
+            `;
+            corpo.appendChild(linha);
+        });
+    }
+
+    window.atualizarGraficoEEquilibrio = function () {
+        let totalEntradas = 0;
+        let totalSaidas = 0;
+
+        const mesFiltroGrafico = document.getElementById('filtro-mes-grafico').value;
+        const lancamentosGrafico = lancamentos.filter(item => {
+            if (mesFiltroGrafico === 'all') return true;
+            return item.data.startsWith(mesFiltroGrafico);
+        });
+
+        lancamentosGrafico.forEach(item => {
+            const val = parseFloat(item.valor);
+            if (item.tipo === 'Entrada') totalEntradas += val; else totalSaidas += val;
+        });
+
+        const equilibrio = totalEntradas - totalSaidas;
+        document.getElementById('resumo-entradas').innerText = `R$ ${totalEntradas.toFixed(2)}`;
+        document.getElementById('resumo-saidas').innerText = `R$ ${totalSaidas.toFixed(2)}`;
+
+        const pEquilibrio = document.getElementById('resumo-equilibrio');
+        pEquilibrio.innerText = `R$ ${equilibrio.toFixed(2)}`;
+        pEquilibrio.className = equilibrio >= 0 ? 'text-green' : 'text-red';
+
+        const ctx = document.getElementById('graficoMensal').getContext('2d');
+        if (meuGrafico) meuGrafico.destroy();
+
+        meuGrafico = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Entradas', 'Saídas'],
+                datasets: [{
+                    label: 'Total em R$',
+                    data: [totalEntradas, totalSaidas],
+                    backgroundColor: ['#27ae60', '#e74c3c'],
+                    borderWidth: 1
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+        });
+    };
+
+    window.analisarCompra = function () {
+        const produto = document.getElementById('sim-produto').value;
+        const valorTotal = parseFloat(document.getElementById('sim-valor').value);
+        const parcelas = parseInt(document.getElementById('sim-parcelas').value);
+        const divResultado = document.getElementById('resultado-simulacao');
+
+        if (!produto || isNaN(valorTotal) || valorTotal <= 0) {
+            alert("Por favor, preencha o nome do produto e um valor válido.");
+            return;
+        }
+
+        let totalEntradas = 0;
+        let totalSaidas = 0;
+        lancamentos.forEach(item => {
+            const val = parseFloat(item.valor);
+            if (item.tipo === 'Entrada') totalEntradas += val; else totalSaidas += val;
+        });
+
+        const saldoMensalAtual = totalEntradas - totalSaidas;
+        const valorParcela = valorTotal / parcelas;
+
+        divResultado.style.display = 'block';
+
+        if (saldoMensalAtual >= valorParcela) {
+            let comprometimento = Math.round((valorParcela / (saldoMensalAtual > 0 ? saldoMensalAtual : 1)) * 100);
+            divResultado.className = "resultado-simulacao sim-positivo";
+            divResultado.innerHTML = `✅ <strong>Viável comprar em ${parcelas}x!</strong><br>
+            • Produto: <strong>${escapeHtml(produto)}</strong> (Total: R$ ${valorTotal.toFixed(2)})<br>
+            • Valor da parcela mensal: <strong>R$ ${valorParcela.toFixed(2)} por mês</strong> (${parcelas}x)<br>
+            • Impacto no seu saldo mensal: Comprometerá cerca de <strong>${comprometimento}%</strong> do seu saldo livre mensal atual.`;
+        } else {
+            divResultado.className = "resultado-simulacao sim-negativo";
+            divResultado.innerHTML = `❌ <strong>Atenção / Alto Risco!</strong><br>
+            • Produto: <strong>${escapeHtml(produto)}</strong> (Total: R$ ${valorTotal.toFixed(2)})<br>
+            • A parcela de <strong>R$ ${valorParcela.toFixed(2)}</strong> excede o seu saldo mensal atual (R$ ${saldoMensalAtual.toFixed(2)}).<br>
+            • O parcelamento em ${parcelas}x deixará seu orçamento mensal no vermelho.`;
+        }
+    };
+})();
+</script>
+</body>
+</html>
