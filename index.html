@@ -12,6 +12,7 @@
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     body { background: #f4f6f9; min-height: 100vh; overflow-x: hidden; }
+
     /* TELA DE LOGIN */
     #login-screen {
         position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
@@ -37,8 +38,6 @@
     .btn-login:hover:not(:disabled) { background: #fa5252; }
     .btn-login:disabled { opacity: 0.6; cursor: not-allowed; }
     .btn-retry { background: #edf2f7; color: #2d3748; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: -5px; margin-bottom: 15px; display: none; }
-    .link-esqueci { display: block; margin-top: 4px; font-size: 0.82rem; color: #3182ce; text-decoration: none; cursor: pointer; }
-    .link-esqueci:hover { text-decoration: underline; }
 
     /* APLICAÇÃO */
     #app-screen { width: 100%; min-height: 100vh; display: flex; flex-wrap: wrap; }
@@ -50,11 +49,11 @@
 
     .main-container { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; }
     .topbar { background: #ffffff; min-height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 12px 16px; gap: 10px; flex-wrap: wrap; row-gap: 8px; }
-    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }
-    .sync-badge.ok { background: #d4edda; color: #155724; }
+    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }.sync-badge.ok { background: #d4edda; color: #155724; }
     .sync-badge.warn { background: #fff3cd; color: #856404; }
     #user-greeting { font-size: 0.9rem; overflow-wrap: anywhere; }
     .btn-logout { background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
+
     .content { padding: 30px; max-width: 100%; overflow-x: hidden; }
     .card { background: white; border-radius: 8px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 25px; max-width: 100%; }
     label { display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
@@ -97,6 +96,7 @@
     .table-scroll { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .scroll-hint { display: none; font-size: 0.72rem; color: #a0aec0; text-align: center; margin-top: 6px; }
     @media(max-width: 720px) { .scroll-hint { display: block; } }
+
     .btn-pagar { background: #3182ce; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
     .btn-pagar:hover { background: #2b6cb0; }
 
@@ -139,33 +139,16 @@
         <button type="button" class="btn-retry" id="btn-retry" onclick="iniciarApp()">Tentar novamente</button>
 
         <form id="form-login" onsubmit="fazerLogin(event)">
-            <label>E-mail</label>
-            <input type="email" id="login-email" placeholder="seu@email.com" required>
+            <label>Selecione o Usuário</label>
+            <select id="login-usuario"></select>
 
             <label>Senha</label>
             <input type="password" id="login-senha" placeholder="Digite sua senha" required>
             <button type="submit" class="btn-login" id="btn-login" disabled>Entrar</button>
-            <a href="#" class="link-esqueci" onclick="mostrarEsqueciSenha(); return false;">🔑 Esqueci minha senha</a>
-        </form>
-
-        <form id="form-esqueci-senha" class="hidden" onsubmit="enviarLinkRedefinicao(event)">
-            <label>Informe seu e-mail cadastrado</label>
-            <input type="email" id="esqueci-email" placeholder="seu@email.com" required>
-            <div id="esqueci-status" class="login-status"></div>
-            <button type="submit" class="btn-login">Enviar link de redefinição</button>
-            <a href="#" class="link-esqueci" onclick="voltarParaLogin(); return false;">← Voltar para o login</a>
-        </form>
-
-        <form id="form-nova-senha" class="hidden" onsubmit="salvarNovaSenha(event)">
-            <label>Nova senha</label>
-            <input type="password" id="nova-senha-1" placeholder="Nova senha (mín. 6 caracteres)" required minlength="6">
-            <label>Confirme a nova senha</label>
-            <input type="password" id="nova-senha-2" placeholder="Confirme a nova senha" required minlength="6">
-            <div id="nova-senha-status" class="login-status"></div>
-            <button type="submit" class="btn-login">Salvar nova senha</button>
         </form>
     </div>
 </div>
+
 <!-- APLICAÇÃO PRINCIPAL -->
 <div id="app-screen" class="hidden">
     <div class="sidebar">
@@ -220,6 +203,7 @@
                         <option value="2026-12">Dezembro / 2026</option>
                     </select>
                 </div>
+
                 <div class="grid-2">
                     <div class="card">
                         <h3 id="titulo-form">Novo Lançamento</h3>
@@ -285,6 +269,7 @@
                     <div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div>
                 </div>
             </div>
+
             <!-- ABA GRÁFICOS E EQUILÍBRIO -->
             <div id="tab-graficos" class="tab-content">
                 <div class="filtro-mes-container">
@@ -308,61 +293,7 @@
                 <div class="card resumo-card">
                     <div class="resumo-item"><h4>Total Entradas</h4><p id="resumo-entradas" class="text-green">R$ 0,00</p></div>
                     <div class="resumo-item"><h4>Total Saídas</h4><p id="resumo-saidas" class="text-red">R$ 0,00</p></div>
-                    <div class="resumo-item"><h4>Equilíbrio Mensal</h4><p id="resumo-equilibrio">R$ 0,00</p></div>
-                </div>
-
-                <div class="card">
-                    <h3>📊 Relatório Mensal por Categoria (Saídas)</h3>
-                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Veja em quais categorias você mais gastou no mês selecionado acima, e exporte esse relatório.</p>
-                    <div class="grafico-wrap" style="width: 100%; max-width: 600px; margin: 0 auto 20px;">
-                        <canvas id="graficoCategorias"></canvas>
-                    </div>
-                    <div class="table-scroll">
-                    <table>
-                        <thead><tr><th>Categoria</th><th>Total Gasto</th><th>% do Total</th></tr></thead>
-                        <tbody id="tabela-relatorio-categorias"></tbody>
-                    </table>
-                    </div>
-                    <div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div>
-                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:15px;">
-                        <button type="button" class="btn-primary" style="width:auto; flex:1; min-width:140px;" onclick="exportarRelatorioPDF()">📄 Exportar PDF</button>
-                        <button type="button" class="btn-primary" style="width:auto; flex:1; min-width:140px; background:#27ae60;" onclick="exportarRelatorioExcel()">📊 Exportar Excel</button>
-                        <button type="button" class="btn-primary" style="width:auto; flex:1; min-width:140px; background:#3182ce;" onclick="exportarRelatorioWord()">📝 Exportar Word</button>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h3>Gráfico Mensal: Entradas vs Saídas</h3>
-                    <div class="grafico-wrap" style="width: 100%; max-width: 600px; margin: 0 auto; height: 320px;">
-                        <canvas id="graficoMensal"></canvas>
-                    </div>
-                </div>
-            </div>
-            <!-- ABA SIMULADOR DE COMPRA -->
-            <div id="tab-simulacao" class="tab-content">
-                <div class="card">
-                    <h3>🛍️ Simulador de Compra Parcelada (Projeção 12 Meses)</h3>
-                    <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Informe o produto, o valor total e escolha a quantidade de parcelas para verificar a viabilidade com base na sua projeção financeira de 12 meses.</p>
-
-                    <label>O que você pretende comprar?</label>
-                    <input type="text" id="sim-produto" placeholder="Ex: Celular, Moto, Geladeira...">
-
-                    <label>Valor Total da Compra (R$)</label>
-                    <input type="number" step="0.01" id="sim-valor" placeholder="0.00">
-
-                    <label>Quantidade de Parcelas</label>
-                    <select id="sim-parcelas">
-                        <option value="1">À vista (1x)</option>
-                        <option value="2">2 vezes</option>
-                        <option value="3">3 vezes</option>
-                        <option value="4">4 vezes</option>
-                        <option value="5">5 vezes</option>
-                        <option value="6">6 vezes</option>
-                        <option value="7">7 vezes</option>
-                        <option value="8">8 vezes</option>
-                        <option value="9">9 vezes</option>
-                        <option value="10">10 vezes</option>
-                        <option value="11">11 vezes</option>
+                    <div class="resumo-item"><h4>Equilíbrio Mensal</h4><p id="resumo-equilibrio">R$ 0,00</p></div>      <option value="11">11 vezes</option>
                         <option value="12">12 vezes</option>
                         <option value="15">15 vezes</option>
                         <option value="18">18 vezes</option>
@@ -404,21 +335,31 @@
                     <div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div>
                 </div>
             </div>
+
             <!-- ABA GERENCIAR USUÁRIOS -->
             <div id="tab-usuarios" class="tab-content">
                 <div class="card">
-                    <h3>👥 Usuários do Sistema</h3>
-                    <p style="color:#718096; font-size:0.9rem; margin-bottom:15px; line-height:1.5;">
-                        Este sistema usa o login seguro do Supabase (mesmo login de todo site confiável, com
-                        senha protegida e recuperação por e-mail). Para adicionar uma nova pessoa, entre no
-                        painel do Supabase em <strong>Authentication → Users → Add user</strong> e cadastre
-                        com um e-mail real e uma senha (mín. 6 caracteres). Se quiser que o nome dela apareça
-                        no sistema (em vez do e-mail), preencha o campo <em>User Metadata</em> com
-                        <code>{"nome": "Nome da Pessoa"}</code> ao criar o usuário.
-                    </p>
-                    <p style="color:#718096; font-size:0.9rem;">
-                        Você está logado como: <strong id="usuario-atual-email">—</strong>
-                    </p>
+                    <h3>👥 Cadastrar Novo Usuário</h3>
+                    <form onsubmit="cadastrarUsuario(event)">
+                        <label>Nome do Usuário</label>
+                        <input type="text" id="novo-user-nome" placeholder="Ex: Sara" required>
+
+                        <label>Senha de Acesso</label>
+                        <input type="password" id="novo-user-senha" placeholder="Digite a senha" required>
+
+                        <button type="submit" class="btn-primary">Criar Usuário</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>Usuários Cadastrados</h3>
+                    <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>Nome do Usuário</th><th>Ação</th></tr></thead>
+                        <tbody id="tabela-usuarios"></tbody>
+                    </table>
+                    </div>
+                    <div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div>
                 </div>
             </div>
 
@@ -440,10 +381,10 @@
     let lancamentos = [];
     let contasPendentes = [];
     let categoriasCadastradas = [];
+    let usuariosCadastrados = [];
     let meuGrafico = null;
     let graficoCategorias = null;
     let canaisRealtime = [];
-    let emRecuperacaoSenha = false;
 
     function escapeHtml(str) {
         return String(str).replace(/[&<>"']/g, c => ({
@@ -462,6 +403,7 @@
     function setLoginHabilitado(habilitado) {
         document.getElementById('btn-login').disabled = !habilitado;
     }
+
     // ---------------------------------------------------------------
     // Inicialização
     // ---------------------------------------------------------------
@@ -470,12 +412,11 @@
         document.getElementById('app-screen').classList.add('hidden');
         document.getElementById('btn-retry').style.display = 'none';
         document.getElementById('login-erro').style.display = 'none';
-        document.getElementById('form-login').classList.remove('hidden');
-        document.getElementById('form-esqueci-senha').classList.add('hidden');
-        document.getElementById('form-nova-senha').classList.add('hidden');
         setLoginHabilitado(false);
         setLoginStatus('Conectando…');
         setSyncBadge('Conectando…', '');
+
+        try { localStorage.removeItem('usuario_logado'); } catch (e) { /* ignore */ }
 
         canaisRealtime.forEach(ch => { try { supabase.removeChannel(ch); } catch (e) {} });
         canaisRealtime = [];
@@ -486,23 +427,20 @@
             }
             if (!supabase) {
                 supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-                supabase.auth.onAuthStateChange((event) => {
-                    if (event === 'PASSWORD_RECOVERY') {
-                        emRecuperacaoSenha = true;
-                        mostrarTelaRedefinirSenha();
-                    }
-                });
             }
 
-            const { data: { session } } = await supabase.auth.getSession();
+            await Promise.all([
+                carregarUsuarios(),
+                carregarCategorias(),
+                carregarContasPendentes(),
+                carregarLancamentos()
+            ]);
 
-            setSyncBadge('🔄 Conectado', 'ok');
-            setLoginStatus('');
+            configurarRealtime();
+
+            setSyncBadge('🔄 Sincronizado', 'ok');
+            setLoginStatus(usuariosCadastrados.length ? '' : 'Nenhum usuário cadastrado ainda.');
             setLoginHabilitado(true);
-
-            if (session && session.user && !emRecuperacaoSenha) {
-                await carregarDadosEIniciarApp(session.user);
-            }
         } catch (e) {
             console.error(e);
             setSyncBadge('⚠️ Sem conexão', 'warn');
@@ -510,8 +448,10 @@
             document.getElementById('btn-retry').style.display = 'block';
         }
     };
+
     function configurarRealtime() {
         const tabelas = [
+            ['usuarios', carregarUsuarios],
             ['categorias', carregarCategorias],
             ['contas_pendentes', carregarContasPendentes],
             ['lancamentos', carregarLancamentos]
@@ -520,21 +460,10 @@
             const canal = supabase
                 .channel('realtime-' + tabela)
                 .on('postgres_changes', { event: '*', schema: 'public', table: tabela }, () => {
-                    recarregar().catch(err => console.error(err));
-                })
+                    recarregar().catch(err => console.error(err));    })
                 .subscribe();
             canaisRealtime.push(canal);
         });
-    }
-
-    async function carregarDadosEIniciarApp(user) {
-        await Promise.all([
-            carregarCategorias(),
-            carregarContasPendentes(),
-            carregarLancamentos()
-        ]);
-        configurarRealtime();
-        mostrarApp(user);
     }
 
     document.addEventListener('DOMContentLoaded', iniciarApp);
@@ -542,6 +471,14 @@
     // ---------------------------------------------------------------
     // Carregamento de dados
     // ---------------------------------------------------------------
+    async function carregarUsuarios() {
+        const { data, error } = await supabase.from('usuarios').select('*').order('created_at');
+        if (error) throw error;
+        usuariosCadastrados = data || [];
+        preencherSelectUsuarios();
+        atualizarTabelaUsuarios();
+    }
+
     async function carregarCategorias() {
         const { data, error } = await supabase.from('categorias').select('*').order('created_at');
         if (error) throw error;
@@ -566,110 +503,97 @@
             atualizarGraficoEEquilibrio();
         }
     }
+
     // ---------------------------------------------------------------
-    // Login (Supabase Auth)
+    // Login
     // ---------------------------------------------------------------
-    function nomeDoUsuario(user) {
-        if (!user) return 'Usuário';
-        return (user.user_metadata && user.user_metadata.nome) || (user.email ? user.email.split('@')[0] : 'Usuário');
+    function preencherSelectUsuarios() {
+        const select = document.getElementById('login-usuario');
+        const valorAtual = select.value;
+        select.innerHTML = '';
+        usuariosCadastrados.forEach(user => {
+            const option = document.createElement('option');
+            option.value = user.nome;
+            option.textContent = user.nome;
+            select.appendChild(option);
+        });
+        if (valorAtual && usuariosCadastrados.some(u => u.nome === valorAtual)) {
+            select.value = valorAtual;
+        }
     }
 
-    window.fazerLogin = async function (event) {
+    window.fazerLogin = function (event) {
         event.preventDefault();
-        document.getElementById('login-erro').style.display = 'none';
-        setLoginHabilitado(false);
+        const usuarioEscolhido = document.getElementById('login-usuario').value;
+        const senhaDigitada = document.getElementById('login-senha').value.trim();
 
-        const email = document.getElementById('login-email').value.trim();
-        const senha = document.getElementById('login-senha').value;
+        const usuarioEncontrado = usuariosCadastrados.find(u => u.nome === usuarioEscolhido && u.senha === senhaDigitada);
 
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password: senha });
-        setLoginHabilitado(true);
-
-        if (error || !data.user) {
-            document.getElementById('login-erro').textContent = 'E-mail ou senha incorretos.';
+        if (usuarioEncontrado) {
+            document.getElementById('login-erro').style.display = 'none';
+            try { localStorage.setItem('usuario_logado', usuarioEncontrado.nome); } catch (e) {}
+            mostrarApp(usuarioEncontrado.nome);
+        } else {
+            document.getElementById('login-erro').textContent = 'Senha incorreta!';
             document.getElementById('login-erro').style.display = 'block';
-            return;
-        }
-
-        try {
-            await carregarDadosEIniciarApp(data.user);
-        } catch (e) {
-            console.error(e);
-            alert('Login feito, mas não foi possível carregar os dados agora. Tente novamente.');
         }
     };
 
-    function mostrarApp(user) {
+    function mostrarApp(usuario) {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').classList.remove('hidden');
-        document.getElementById('user-greeting').innerText = `Logado como: ${nomeDoUsuario(user)}`;
-        const emailEl = document.getElementById('usuario-atual-email');
-        if (emailEl) emailEl.textContent = user.email || '—';
+        document.getElementById('user-greeting').innerText = `Logado como: ${usuario}`;
     }
 
-    window.fazerLogout = async function () {
-        try { await supabase.auth.signOut(); } catch (e) {}
+    window.fazerLogout = function () {
+        try { localStorage.removeItem('usuario_logado'); } catch (e) {}
         location.reload();
     };
-    // ---------------------------------------------------------------
-    // Esqueci minha senha
-    // ---------------------------------------------------------------
-    window.mostrarEsqueciSenha = function () {
-        document.getElementById('form-login').classList.add('hidden');
-        document.getElementById('form-esqueci-senha').classList.remove('hidden');
-        document.getElementById('esqueci-status').textContent = '';
-    };
 
-    window.voltarParaLogin = function () {
-        document.getElementById('form-esqueci-senha').classList.add('hidden');
-        document.getElementById('form-login').classList.remove('hidden');
-    };
-
-    window.enviarLinkRedefinicao = async function (event) {
+    // ---------------------------------------------------------------
+    // Usuários
+    // ---------------------------------------------------------------
+    window.cadastrarUsuario = async function (event) {
         event.preventDefault();
-        const email = document.getElementById('esqueci-email').value.trim();
-        const statusEl = document.getElementById('esqueci-status');
-        statusEl.textContent = 'Enviando…';
+        const nome = document.getElementById('novo-user-nome').value.trim();
+        const senha = document.getElementById('novo-user-senha').value.trim();
+        if (!nome || !senha) return;
 
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + window.location.pathname
-        });
-
-        if (error) {
-            statusEl.textContent = 'Não foi possível enviar agora. Tente novamente.';
+        if (usuariosCadastrados.some(u => u.nome.toLowerCase() === nome.toLowerCase())) {
+            alert("Este usuário já existe!");
             return;
         }
-        statusEl.textContent = 'Link enviado! Verifique seu e-mail (e a caixa de spam).';
+
+        const { error } = await supabase.from('usuarios').insert({ nome, senha });
+        if (error) { alert("Não foi possível salvar o usuário agora. Tente novamente."); return; }
+        await carregarUsuarios();
+        event.target.reset();
+        alert("Usuário cadastrado com sucesso!");
     };
 
-    function mostrarTelaRedefinirSenha() {
-        document.getElementById('login-screen').style.display = 'flex';
-        document.getElementById('app-screen').classList.add('hidden');
-        document.getElementById('btn-retry').style.display = 'none';
-        document.getElementById('login-erro').style.display = 'none';
-        document.getElementById('form-login').classList.add('hidden');
-        document.getElementById('form-esqueci-senha').classList.add('hidden');
-        document.getElementById('form-nova-senha').classList.remove('hidden');
-        setLoginStatus('Defina sua nova senha para continuar.');
+    window.excluirUsuario = async function (id) {
+        if (usuariosCadastrados.length <= 1) {
+            alert("Você precisa manter pelo menos um usuário no sistema!");
+            return;
+        }
+        if (!confirm("Deseja realmente excluir este usuário?")) return;
+        const { error } = await supabase.from('usuarios').delete().eq('id', id);
+        if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
+        await carregarUsuarios();
+    };
+
+    function atualizarTabelaUsuarios() {
+        const corpo = document.getElementById('tabela-usuarios');
+        corpo.innerHTML = '';
+        usuariosCadastrados.forEach((user) => {
+            const linha = document.createElement('tr');
+            linha.innerHTML = `
+                <td>${escapeHtml(user.nome)}</td>
+                <td><button class="btn-acao" onclick="excluirUsuario('${user.id}')" title="Excluir">🗑️</button></td>
+            `;
+            corpo.appendChild(linha);
+        });
     }
-    window.salvarNovaSenha = async function (event) {
-        event.preventDefault();
-        const novaSenha = document.getElementById('nova-senha-1').value;
-        const novaSenha2 = document.getElementById('nova-senha-2').value;
-        const statusEl = document.getElementById('nova-senha-status');
-
-        if (novaSenha.length < 6) { statusEl.textContent = 'A senha precisa ter pelo menos 6 caracteres.'; return; }
-        if (novaSenha !== novaSenha2) { statusEl.textContent = 'As senhas não coincidem.'; return; }
-
-        statusEl.textContent = 'Salvando…';
-        const { error } = await supabase.auth.updateUser({ password: novaSenha });
-        if (error) { statusEl.textContent = 'Não foi possível salvar agora. Tente novamente.'; return; }
-
-        statusEl.textContent = 'Senha alterada com sucesso! Redirecionando para o login…';
-        emRecuperacaoSenha = false;
-        try { await supabase.auth.signOut(); } catch (e) {}
-        setTimeout(() => { window.location.href = window.location.origin + window.location.pathname; }, 1500);
-    };
 
     window.mudarAba = function (abaId, elemento) {
         document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
@@ -690,6 +614,7 @@
         inputData.value = `${mesSelecionado}-${diaAtual}`;
         atualizarTabela();
     };
+
     // ---------------------------------------------------------------
     // Categorias
     // ---------------------------------------------------------------
@@ -704,7 +629,7 @@
             return;
         }
 
-        const { error } = await supabase.from('categorias').insert({ tipo, nome });
+        const { error } = await supabase.from('categorias').insert({ tipo, nome});
         if (error) { alert("Não foi possível salvar a categoria agora. Tente novamente."); return; }
         await carregarCategorias();
         event.target.reset();
@@ -735,6 +660,7 @@
             corpo.appendChild(linha);
         });
     }
+
     window.atualizarCategorias = function () {
         const tipo = document.getElementById('tipo').value;
         const inputCategoria = document.getElementById('categoria-input');
@@ -789,7 +715,7 @@
 
         filtradas.forEach(conta => {
             const linha = document.createElement('tr');
-            linha.innerHTML = `
+            linha.innerHTML= `
                 <td>${conta.vencimento.split('-').reverse().join('/')}</td>
                 <td>${escapeHtml(conta.descricao)}</td>
                 <td>R$ ${parseFloat(conta.valor).toFixed(2)}</td>
@@ -804,6 +730,7 @@
         if (error) { alert("Não foi possível atualizar agora. Tente novamente."); return; }
         await carregarContasPendentes();
     };
+
     // ---------------------------------------------------------------
     // Lançamentos
     // ---------------------------------------------------------------
@@ -854,6 +781,7 @@
         mudarMesOrcamento();
         atualizarCategorias();
     };
+
     window.editarLancamento = function (id) {
         const item = lancamentos.find(l => l.id === id);
         if (!item) return;
@@ -887,6 +815,7 @@
         if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
         await carregarLancamentos();
     };
+
     function atualizarTabela() {
         const corpo = document.getElementById('tabela-corpo');
         corpo.innerHTML = '';
@@ -925,12 +854,12 @@
                 <td>R$ ${item.valor}</td>
                 <td>
                     <button class="btn-acao" onclick="editarLancamento('${item.id}')" title="Editar">✏️</button>
-                    <button class="btn-acao" onclick="excluirLancamento('${item.id}')" title="Excluir Todas as Parcelas">🗑️</button>
-                </td>
+                    <button class="btn-acao" onclick="excluirLancamento('${item.id}')" title="Excluir Todas as Parcelas">🗑️</button>   </td>
             `;
             corpo.appendChild(linha);
         });
     }
+
     window.atualizarGraficoEEquilibrio = function () {
         let totalEntradas = 0;
         let totalSaidas = 0;
@@ -973,6 +902,7 @@
 
         atualizarRelatorioCategorias();
     };
+
     // ---------------------------------------------------------------
     // Relatório mensal por categoria (com exportação)
     // ---------------------------------------------------------------
@@ -1004,6 +934,7 @@
 
         return { mesFiltro, mesLabel, linhas, totalGeral };
     }
+
     function atualizarRelatorioCategorias() {
         const tabelaEl = document.getElementById('tabela-relatorio-categorias');
         const canvasEl = document.getElementById('graficoCategorias');
@@ -1051,6 +982,7 @@
             }
         });
     }
+
     function nomeArquivoRelatorio(mesLabel) {
         return 'relatorio-categorias-' + mesLabel.replace(/[^a-zA-Z0-9]+/g, '-');
     }
@@ -1087,6 +1019,7 @@
         });
         doc.save(nomeArquivoRelatorio(mesLabel) + '.pdf');
     };
+
     window.exportarRelatorioWord = function () {
         const { linhas, mesLabel, totalGeral } = obterDadosRelatorioCategorias();
         if (totalGeral === 0) { alert('Não há saídas registradas neste mês para exportar.'); return; }
@@ -1112,6 +1045,7 @@
         document.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     };
+
     window.analisarCompra = function () {
         const produto = document.getElementById('sim-produto').value;
         const valorTotal = parseFloat(document.getElementById('sim-valor').value);
