@@ -49,7 +49,8 @@
 
     .main-container { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; }
     .topbar { background: #ffffff; min-height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 12px 16px; gap: 10px; flex-wrap: wrap; row-gap: 8px; }
-    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }.sync-badge.ok { background: #d4edda; color: #155724; }
+    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }
+    .sync-badge.ok { background: #d4edda; color: #155724; }
     .sync-badge.warn { background: #fff3cd; color: #856404; }
     #user-greeting { font-size: 0.9rem; overflow-wrap: anywhere; }
     .btn-logout { background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
@@ -293,7 +294,62 @@
                 <div class="card resumo-card">
                     <div class="resumo-item"><h4>Total Entradas</h4><p id="resumo-entradas" class="text-green">R$ 0,00</p></div>
                     <div class="resumo-item"><h4>Total Saídas</h4><p id="resumo-saidas" class="text-red">R$ 0,00</p></div>
-                    <div class="resumo-item"><h4>Equilíbrio Mensal</h4><p id="resumo-equilibrio">R$ 0,00</p></div>      <option value="11">11 vezes</option>
+                    <div class="resumo-item"><h4>Equilíbrio Mensal</h4><p id="resumo-equilibrio">R$ 0,00</p></div>
+                </div>
+
+                <div class="card">
+                    <h3>📊 Relatório Mensal por Categoria (Saídas)</h3>
+                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Veja em quais categorias você mais gastou no mês selecionado acima, e exporte esse relatório.</p>
+                    <div class="grafico-wrap" style="width: 100%; max-width: 600px; margin: 0 auto 20px;">
+                        <canvas id="graficoCategorias"></canvas>
+                    </div>
+                    <div class="table-scroll">
+                    <table>
+                        <thead><tr><th>Categoria</th><th>Total Gasto</th><th>% do Total</th></tr></thead>
+                        <tbody id="tabela-relatorio-categorias"></tbody>
+                    </table>
+                    </div>
+                    <div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div>
+                    <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:15px;">
+                        <button type="button" class="btn-primary" style="width:auto; flex:1; min-width:140px;" onclick="exportarRelatorioPDF()">📄 Exportar PDF</button>
+                        <button type="button" class="btn-primary" style="width:auto; flex:1; min-width:140px; background:#27ae60;" onclick="exportarRelatorioExcel()">📊 Exportar Excel</button>
+                        <button type="button" class="btn-primary" style="width:auto; flex:1; min-width:140px; background:#3182ce;" onclick="exportarRelatorioWord()">📝 Exportar Word</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>Gráfico Mensal: Entradas vs Saídas</h3>
+                    <div class="grafico-wrap" style="width: 100%; max-width: 600px; margin: 0 auto; height: 320px;">
+                        <canvas id="graficoMensal"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA SIMULADOR DE COMPRA -->
+            <div id="tab-simulacao" class="tab-content">
+                <div class="card">
+                    <h3>🛍️ Simulador de Compra Parcelada (Projeção 12 Meses)</h3>
+                    <p style="color: #718096; font-size: 0.9rem; margin-bottom: 20px;">Informe o produto, o valor total e escolha a quantidade de parcelas para verificar a viabilidade com base na sua projeção financeira de 12 meses.</p>
+
+                    <label>O que você pretende comprar?</label>
+                    <input type="text" id="sim-produto" placeholder="Ex: Celular, Moto, Geladeira...">
+
+                    <label>Valor Total da Compra (R$)</label>
+                    <input type="number" step="0.01" id="sim-valor" placeholder="0.00">
+
+                    <label>Quantidade de Parcelas</label>
+                    <select id="sim-parcelas">
+                        <option value="1">À vista (1x)</option>
+                        <option value="2">2 vezes</option>
+                        <option value="3">3 vezes</option>
+                        <option value="4">4 vezes</option>
+                        <option value="5">5 vezes</option>
+                        <option value="6">6 vezes</option>
+                        <option value="7">7 vezes</option>
+                        <option value="8">8 vezes</option>
+                        <option value="9">9 vezes</option>
+                        <option value="10">10 vezes</option>
+                        <option value="11">11 vezes</option>
                         <option value="12">12 vezes</option>
                         <option value="15">15 vezes</option>
                         <option value="18">18 vezes</option>
@@ -460,7 +516,8 @@
             const canal = supabase
                 .channel('realtime-' + tabela)
                 .on('postgres_changes', { event: '*', schema: 'public', table: tabela }, () => {
-                    recarregar().catch(err => console.error(err));    })
+                    recarregar().catch(err => console.error(err));
+                })
                 .subscribe();
             canaisRealtime.push(canal);
         });
@@ -629,7 +686,7 @@
             return;
         }
 
-        const { error } = await supabase.from('categorias').insert({ tipo, nome});
+        const { error } = await supabase.from('categorias').insert({ tipo, nome });
         if (error) { alert("Não foi possível salvar a categoria agora. Tente novamente."); return; }
         await carregarCategorias();
         event.target.reset();
@@ -715,7 +772,7 @@
 
         filtradas.forEach(conta => {
             const linha = document.createElement('tr');
-            linha.innerHTML= `
+            linha.innerHTML = `
                 <td>${conta.vencimento.split('-').reverse().join('/')}</td>
                 <td>${escapeHtml(conta.descricao)}</td>
                 <td>R$ ${parseFloat(conta.valor).toFixed(2)}</td>
@@ -854,7 +911,8 @@
                 <td>R$ ${item.valor}</td>
                 <td>
                     <button class="btn-acao" onclick="editarLancamento('${item.id}')" title="Editar">✏️</button>
-                    <button class="btn-acao" onclick="excluirLancamento('${item.id}')" title="Excluir Todas as Parcelas">🗑️</button>   </td>
+                    <button class="btn-acao" onclick="excluirLancamento('${item.id}')" title="Excluir Todas as Parcelas">🗑️</button>
+                </td>
             `;
             corpo.appendChild(linha);
         });
