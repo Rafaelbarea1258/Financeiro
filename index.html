@@ -49,8 +49,7 @@
 
     .main-container { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; }
     .topbar { background: #ffffff; min-height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 12px 16px; gap: 10px; flex-wrap: wrap; row-gap: 8px; }
-    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }
-    .sync-badge.ok { background: #d4edda; color: #155724; }
+    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }.sync-badge.ok { background: #d4edda; color: #155724; }
     .sync-badge.warn { background: #fff3cd; color: #856404; }
     #user-greeting { font-size: 0.9rem; overflow-wrap: anywhere; }
     .btn-logout { background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
@@ -174,6 +173,35 @@
 
             <!-- ABA LANÇAMENTOS -->
             <div id="tab-lancamentos" class="tab-content active">
+                <div class="card" style="border-left: 4px solid #9b59b6;">
+                    <h3>🌟 Metas e Sonhos</h3>
+                    <form onsubmit="cadastrarMeta(event)" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:10px;">
+                        <div style="flex:2; min-width:180px;">
+                            <label>O que vocês querem conquistar?</label>
+                            <input type="text" id="nova-meta-titulo" placeholder="Ex: Viagem para a praia, Carro novo..." required style="margin-bottom:0;">
+                        </div>
+                        <div style="flex:1; min-width:150px;">
+                            <label>Status</label>
+                            <select id="nova-meta-status" style="margin-bottom:0;">
+                                <option value="Aguardando">Aguardando</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Conquistado">Conquistado</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary" style="width:auto; padding:10px 20px; margin-bottom:0;">Adicionar</button>
+                    </form>
+                    <div id="lista-metas"></div>
+                </div>
+
+                <div class="card" style="border-left: 4px solid #3182ce;">
+                    <h3>✅ Lista de Tarefas da Casa</h3>
+                    <form onsubmit="cadastrarTarefa(event)" style="display:flex; gap:10px; margin-bottom:10px;">
+                        <input type="text" id="nova-tarefa-descricao" placeholder="Ex: Trocar lâmpada da cozinha..." required style="margin-bottom:0; flex:1;">
+                        <button type="submit" class="btn-primary" style="width:auto; padding:10px 20px; margin-bottom:0;">Adicionar</button>
+                    </form>
+                    <div id="lista-tarefas"></div>
+                </div>
+
                 <div class="card" style="border-left: 4px solid #f39c12;">
                     <h3>🔔 Contas a Vencer (Próximos 15 dias)</h3>
                     <div class="table-scroll">
@@ -438,6 +466,8 @@
     let contasPendentes = [];
     let categoriasCadastradas = [];
     let usuariosCadastrados = [];
+    let metasCadastradas = [];
+    let tarefasCadastradas = [];
     let meuGrafico = null;
     let graficoCategorias = null;
     let canaisRealtime = [];
@@ -489,7 +519,9 @@
                 carregarUsuarios(),
                 carregarCategorias(),
                 carregarContasPendentes(),
-                carregarLancamentos()
+                carregarLancamentos(),
+                carregarMetas(),
+                carregarTarefas()
             ]);
 
             configurarRealtime();
@@ -510,7 +542,9 @@
             ['usuarios', carregarUsuarios],
             ['categorias', carregarCategorias],
             ['contas_pendentes', carregarContasPendentes],
-            ['lancamentos', carregarLancamentos]
+            ['lancamentos', carregarLancamentos],
+            ['metas', carregarMetas],
+            ['tarefas_casa', carregarTarefas]
         ];
         tabelas.forEach(([tabela, recarregar]) => {
             const canal = supabase
@@ -549,6 +583,20 @@
         if (error) throw error;
         contasPendentes = data || [];
         atualizarContasVencer();
+    }
+
+    async function carregarMetas() {
+        const { data, error } = await supabase.from('metas').select('*').order('created_at');
+        if (error) throw error;
+        metasCadastradas = data || [];
+        atualizarListaMetas();
+    }
+
+    async function carregarTarefas() {
+        const { data, error } = await supabase.from('tarefas_casa').select('*').order('created_at');
+        if (error) throw error;
+        tarefasCadastradas = data || [];
+        atualizarListaTarefas();
     }
 
     async function carregarLancamentos() {
@@ -748,6 +796,107 @@
             inputCategoria.value = '';
         }
     };
+
+    // ---------------------------------------------------------------
+    // Metas e Sonhos
+    // ---------------------------------------------------------------
+    window.cadastrarMeta = async function (event) {
+        event.preventDefault();
+        const titulo = document.getElementById('nova-meta-titulo').value.trim();
+        const status = document.getElementById('nova-meta-status').value;
+        if (!titulo) return;
+
+        const { error } = await supabase.from('metas').insert({ titulo, status });
+        if (error) { alert("Não foi possível salvar a meta agora. Tente novamente."); return; }
+        await carregarMetas();
+        event.target.reset();
+    };
+
+    window.atualizarStatusMeta = async function (id, status) {
+        const { error } = await supabase.from('metas').update({ status }).eq('id', id);
+        if (error) { alert("Não foi possível atualizar a meta agora. Tente novamente."); return; }
+        await carregarMetas();
+    };
+
+    window.excluirMeta = async function (id) {
+        if (!confirm("Deseja realmente excluir esta meta?")) return;
+        const { error } = await supabase.from('metas').delete().eq('id', id);
+        if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
+        await carregarMetas();
+    };
+
+    function atualizarListaMetas() {
+        const container = document.getElementById('lista-metas');
+        if (!container) return;
+        container.innerHTML = '';
+        if (metasCadastradas.length === 0) {
+            container.innerHTML = '<p class="empty-msg">Nenhuma meta cadastrada ainda.</p>';
+            return;
+        }
+        const cores = { 'Conquistado': '#27ae60', 'Em Andamento': '#f39c12', 'Aguardando': '#a0aec0' };
+        metasCadastradas.forEach(meta => {
+            const cor = cores[meta.status] || '#a0aec0';
+            const linha = document.createElement('div');
+            linha.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #edf2f7; flex-wrap:wrap;';
+            linha.innerHTML = `
+                <span style="flex:1; min-width:150px; font-weight:600;">${escapeHtml(meta.titulo)}</span>
+                <select onchange="atualizarStatusMeta('${meta.id}', this.value)" style="width:auto; margin-bottom:0; border-color:${cor}; color:${cor}; font-weight:600;">
+                    <option value="Aguardando" ${meta.status === 'Aguardando' ? 'selected' : ''}>⏳ Aguardando</option>
+                    <option value="Em Andamento" ${meta.status === 'Em Andamento' ? 'selected' : ''}>🚧 Em Andamento</option>
+                    <option value="Conquistado" ${meta.status === 'Conquistado' ? 'selected' : ''}>✅ Conquistado</option>
+                </select>
+                <button class="btn-acao" onclick="excluirMeta('${meta.id}')" title="Excluir">🗑️</button>
+            `;
+            container.appendChild(linha);
+        });
+    }
+
+    // ---------------------------------------------------------------
+    // Lista de Tarefas da Casa
+    // ---------------------------------------------------------------
+    window.cadastrarTarefa = async function (event) {
+        event.preventDefault();
+        const descricao = document.getElementById('nova-tarefa-descricao').value.trim();
+        if (!descricao) return;
+
+        const { error } = await supabase.from('tarefas_casa').insert({ descricao });
+        if (error) { alert("Não foi possível salvar a tarefa agora. Tente novamente."); return; }
+        await carregarTarefas();
+        event.target.reset();
+    };
+
+    window.alternarTarefa = async function (id, concluida) {
+        const { error } = await supabase.from('tarefas_casa').update({ concluida }).eq('id', id);
+        if (error) { alert("Não foi possível atualizar a tarefa agora. Tente novamente."); return; }
+        await carregarTarefas();
+    };
+
+    window.excluirTarefa = async function (id) {
+        if (!confirm("Deseja realmente excluir esta tarefa?")) return;
+        const { error } = await supabase.from('tarefas_casa').delete().eq('id', id);
+        if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
+        await carregarTarefas();
+    };
+
+    function atualizarListaTarefas() {
+        const container = document.getElementById('lista-tarefas');
+        if (!container) return;
+        container.innerHTML = '';
+        if (tarefasCadastradas.length === 0) {
+            container.innerHTML = '<p class="empty-msg">Nenhuma tarefa cadastrada ainda.</p>';
+            return;
+        }
+        tarefasCadastradas.forEach(tarefa => {
+            const linha = document.createElement('div');
+            linha.style.cssText = 'display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #edf2f7;';
+            linha.innerHTML = `
+                <input type="checkbox" ${tarefa.concluida ? 'checked' : ''} onchange="alternarTarefa('${tarefa.id}', this.checked)" style="width:auto; margin-bottom:0;">
+                <span style="flex:1; ${tarefa.concluida ? 'text-decoration:line-through; color:#a0aec0;' : ''}">${escapeHtml(tarefa.descricao)}</span>
+                <button class="btn-acao" onclick="excluirTarefa('${tarefa.id}')" title="Excluir">🗑️</button>
+            `;
+            container.appendChild(linha);
+        });
+    }
 
     // ---------------------------------------------------------------
     // Contas a vencer
