@@ -256,20 +256,7 @@
 
                 <div class="filtro-mes-container">
                     <label for="filtro-mes" style="margin-bottom:0; font-weight:bold;">Orçamento do Mês:</label>
-                    <select id="filtro-mes" onchange="mudarMesOrcamento()">
-                        <option value="2026-01">Janeiro / 2026</option>
-                        <option value="2026-02">Fevereiro / 2026</option>
-                        <option value="2026-03">Março / 2026</option>
-                        <option value="2026-04">Abril / 2026</option>
-                        <option value="2026-05">Maio / 2026</option>
-                        <option value="2026-06">Junho / 2026</option>
-                        <option value="2026-07">Julho / 2026</option>
-                        <option value="2026-08">Agosto / 2026</option>
-                        <option value="2026-09" selected>Setembro / 2026</option>
-                        <option value="2026-10">Outubro / 2026</option>
-                        <option value="2026-11">Novembro / 2026</option>
-                        <option value="2026-12">Dezembro / 2026</option>
-                    </select>
+                    <select id="filtro-mes" onchange="mudarMesOrcamento()"></select>
                 </div>
 
                 <div class="grid-2">
@@ -294,7 +281,8 @@
                                 <label>Quantidade de Parcelas / Meses</label>
                                 <select id="qtd-parcelas">
                                     <option value="1">1 mês (À vista)</option>
-                                    <option value="2">2 meses</option>                                <option value="3">3 meses</option>
+                                    <option value="2">2 meses</option>
+                                    <option value="3">3 meses</option>
                                     <option value="4">4 meses</option>
                                     <option value="5">5 meses</option>
                                     <option value="6">6 meses</option>
@@ -305,8 +293,7 @@
                                     <option value="11">11 meses</option>
                                     <option value="12">12 meses</option>
                                     <option value="15">15 meses</option>
-                                    <option value="18">18 meses</option>
-                                    <option value="24">24 meses</option>
+                                    <option value="18">18 meses</option>      <option value="24">24 meses</option>
                                 </select>
                             </div>
 
@@ -341,19 +328,7 @@
             <div id="tab-graficos" class="tab-content">
                 <div class="filtro-mes-container">
                     <label for="filtro-mes-grafico" style="margin-bottom:0; font-weight:bold;">Mês do Gráfico:</label>
-                    <select id="filtro-mes-grafico" onchange="atualizarGraficoEEquilibrio()">
-                        <option value="2026-01">Janeiro / 2026</option>
-                        <option value="2026-02">Fevereiro / 2026</option>
-                        <option value="2026-03">Março / 2026</option>
-                        <option value="2026-04">Abril / 2026</option>
-                        <option value="2026-05">Maio / 2026</option>
-                        <option value="2026-06">Junho / 2026</option>
-                        <option value="2026-07">Julho / 2026</option>
-                        <option value="2026-08">Agosto / 2026</option>
-                        <option value="2026-09" selected>Setembro / 2026</option>   <option value="2026-10">Outubro / 2026</option>
-                        <option value="2026-11">Novembro / 2026</option>
-                        <option value="2026-12">Dezembro / 2026</option>
-                    </select>
+                    <select id="filtro-mes-grafico" onchange="atualizarGraficoEEquilibrio()"></select>
                 </div>
 
                 <div class="card resumo-card">
@@ -515,6 +490,35 @@
         }[c]));
     }
 
+    // ---------------------------------------------------------------
+    // Seletores de mês (Orçamento do Mês / Mês do Gráfico)
+    // Gera dinamicamente vários anos para trás e para frente a partir
+    // do mês atual, em vez de uma lista fixa de meses.
+    // ---------------------------------------------------------------
+    const MESES_PT = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+    function gerarOpcoesMes(selectId, valorParaSelecionar) {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        const hoje = new Date();
+        const anoBase = hoje.getFullYear();
+        const mesBase = hoje.getMonth();
+        const valorAtual = valorParaSelecionar || `${anoBase}-${String(mesBase + 1).padStart(2, '0')}`;
+        select.innerHTML = '';
+        for (let offset = -60; offset <= 60; offset++) {
+            const d = new Date(anoBase, mesBase + offset, 1);
+            const valor = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const option = document.createElement('option');
+            option.value = valor;
+            option.textContent = `${MESES_PT[d.getMonth()]} / ${d.getFullYear()}`;
+            if (valor === valorAtual) option.selected = true;
+            select.appendChild(option);
+        }
+    }
+
+    gerarOpcoesMes('filtro-mes');
+    gerarOpcoesMes('filtro-mes-grafico');
+
     function setSyncBadge(texto, classe) {
         const badge = document.getElementById('sync-badge');
         badge.textContent = texto;
@@ -568,7 +572,8 @@
             setLoginHabilitado(true);
         } catch (e) {
             console.error(e);
-            setSyncBadge('⚠️ Sem conexão', 'warn');       setLoginStatus('Não foi possível conectar ao banco de dados agora.');
+            setSyncBadge('⚠️ Sem conexão', 'warn');
+            setLoginStatus('Não foi possível conectar ao banco de dados agora.');
             document.getElementById('btn-retry').style.display = 'block';
         }
     };
@@ -829,8 +834,7 @@
 
         const valorAtual = inputCategoria.value.trim();
         if (valorAtual && !filtradas.some(c => c.nome.toLowerCase() === valorAtual.toLowerCase())) {
-            inputCategoria.value = '';
-        }
+            inputCategoria.value = '';        }
     };
 
     // ---------------------------------------------------------------
@@ -890,7 +894,8 @@
     // ---------------------------------------------------------------
     // Lista de Tarefas da Casa
     // ---------------------------------------------------------------
-    window.cadastrarTarefa = async function (event) {      event.preventDefault();
+    window.cadastrarTarefa = async function (event) {
+        event.preventDefault();
         const descricao = document.getElementById('nova-tarefa-descricao').value.trim();
         if (!descricao) return;
 
@@ -968,7 +973,7 @@
 
     window.marcarComoPago = async function (id) {
         const { error } = await supabase.from('contas_pendentes').delete().eq('id', id);
-        if (error) { alert("Não foi possível atualizar agora. Tente novamente."); return; }
+        if (error){ alert("Não foi possível atualizar agora. Tente novamente."); return; }
         await carregarContasPendentes();
     };
 
@@ -1188,7 +1193,8 @@
         if (linhas.length === 0) {
             tabelaEl.innerHTML = `<tr><td colspan="3" class="empty-msg">Nenhuma saída registrada neste mês.</td></tr>`;
         } else {
-            linhas.forEach(l => {       const linha = document.createElement('tr');
+            linhas.forEach(l => {
+                const linha = document.createElement('tr');
                 linha.innerHTML = `
                     <td>${escapeHtml(l.categoria)}</td>
                     <td>R$ ${l.total.toFixed(2)}</td>
