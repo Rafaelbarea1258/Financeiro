@@ -49,8 +49,7 @@
 
     .main-container { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; }
     .topbar { background: #ffffff; min-height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 12px 16px; gap: 10px; flex-wrap: wrap; row-gap: 8px; }
-    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }
-    .sync-badge.ok { background: #d4edda; color: #155724; }
+    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }.sync-badge.ok { background: #d4edda; color: #155724; }
     .sync-badge.warn { background: #fff3cd; color: #856404; }
     #user-greeting { font-size: 0.9rem; overflow-wrap: anywhere; }
     .btn-logout { background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
@@ -66,7 +65,7 @@
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     @media(max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
 
-    @media(max-width: 720px) {
+    @media(max-width: 860px) {
         #app-screen { flex-direction: column; }
         .sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e2e8f0; }
         .sidebar-menu {
@@ -74,10 +73,35 @@
             padding: 8px; gap: 4px; scrollbar-width: thin;
         }
         .sidebar-menu li { flex-shrink: 0; }
-        .sidebar-menu li a { padding: 8px 12px; border-radius: 6px; white-space: nowrap; font-size: 0.85rem; }
+        .sidebar-menu li a {
+            padding: 12px 16px; border-radius: 6px; white-space: nowrap; font-size: 0.9rem;
+            min-height: 44px; display: flex; align-items: center;
+        }
         .sidebar-menu li a:hover, .sidebar-menu li a.active { border-right: none; border-bottom: 3px solid #ff6b6b; }
         .content { padding: 16px; }
         .topbar { justify-content: space-between; padding: 10px 14px; }
+
+        /* Alvos de toque maiores em tablet/celular */
+        .btn-primary, .btn-login, .btn-logout, .btn-retry { min-height: 44px; }
+        .btn-pagar { min-height: 38px; padding: 8px 14px; }
+        .btn-acao { font-size: 1.25rem; padding: 6px 8px; min-width: 40px; min-height: 40px; }
+        input, select { min-height: 44px; }
+        button, a, input, select { touch-action: manipulation; }
+
+        /* Formulários de Metas e Tarefas empilhados em telas menores */
+        #tab-lancamentos form[onsubmit="cadastrarMeta(event)"],
+        #tab-lancamentos form[onsubmit="cadastrarTarefa(event)"] {
+            flex-direction: column; align-items: stretch !important;
+        }
+        #tab-lancamentos form[onsubmit="cadastrarMeta(event)"] > div,
+        #tab-lancamentos form[onsubmit="cadastrarMeta(event)"] > button,
+        #tab-lancamentos form[onsubmit="cadastrarTarefa(event)"] > button {
+            width: 100%; flex: 1 1 100% !important; min-width: 0 !important;
+        }
+
+        /* Filtro do mês empilhado */
+        .filtro-mes-container { flex-direction: column; align-items: stretch; }
+        .filtro-mes-container select { max-width: 100%; }
     }
 
     @media(max-width: 480px) {
@@ -85,10 +109,14 @@
         .card { padding: 16px; }
         .content { padding: 12px; }
         .sidebar-brand { padding: 14px 16px; font-size: 1rem; }
-        h3 { font-size: 1.05rem; }
-        .grafico-wrap { height: 240px !important; }
+        h3 { font-size: 1.05rem; }        .grafico-wrap { height: 240px !important; }
         table { min-width: 420px; }
         th, td { padding: 8px 6px; font-size: 0.8rem; }
+        .resumo-box { padding: 12px 14px; }
+        .resumo-box span { font-size: 1.05rem; }
+        .resumo-item p { font-size: 1.2rem; }
+        #lista-metas > div select { width: 100% !important; margin-top: 6px; }
+        #lista-metas > div, #lista-tarefas > div { padding: 12px 0; }
     }
 
     table { width: 100%; border-collapse: collapse; margin-top: 10px; min-width: 480px; }
@@ -96,7 +124,7 @@
     td { padding: 12px; font-size: 0.9rem; border-bottom: 1px solid #edf2f7; }
     .table-scroll { width: 100%; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
     .scroll-hint { display: none; font-size: 0.72rem; color: #a0aec0; text-align: center; margin-top: 6px; }
-    @media(max-width: 720px) { .scroll-hint { display: block; } }
+    @media(max-width: 860px) { .scroll-hint { display: block; } }
 
     .btn-pagar { background: #3182ce; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.8rem; }
     .btn-pagar:hover { background: #2b6cb0; }
@@ -264,8 +292,7 @@
                                     <option value="7">7 meses</option>
                                     <option value="8">8 meses</option>
                                     <option value="9">9 meses</option>
-                                    <option value="10">10 meses</option>
-                                    <option value="11">11 meses</option>
+                                    <option value="10">10 meses</option>                <option value="11">11 meses</option>
                                     <option value="12">12 meses</option>
                                     <option value="15">15 meses</option>
                                     <option value="18">18 meses</option>
@@ -547,8 +574,7 @@
             ['metas', carregarMetas],
             ['tarefas_casa', carregarTarefas]
         ];
-        tabelas.forEach(([tabela, recarregar]) => {
-            const canal = supabase
+        tabelas.forEach(([tabela, recarregar]) => {      const canal = supabase
                 .channel('realtime-' + tabela)
                 .on('postgres_changes', { event: '*', schema: 'public', table: tabela }, () => {
                     recarregar().catch(err => console.error(err));
@@ -840,7 +866,7 @@
             const linha = document.createElement('div');
             linha.style.cssText = 'display:flex; align-items:center; gap:10px; padding:10px 0; border-bottom:1px solid #edf2f7; flex-wrap:wrap;';
             linha.innerHTML = `
-                <span style="flex:1; min-width:150px; font-weight:600;">${escapeHtml(meta.titulo)}</span>
+                <span style="flex:1; min-width:150px; font-weight:600; word-break:break-word;">${escapeHtml(meta.titulo)}</span>
                 <select onchange="atualizarStatusMeta('${meta.id}', this.value)" style="width:auto; margin-bottom:0; border-color:${cor}; color:${cor}; font-weight:600;">
                     <option value="Aguardando" ${meta.status === 'Aguardando' ? 'selected' : ''}>⏳ Aguardando</option>
                     <option value="Em Andamento" ${meta.status === 'Em Andamento' ? 'selected' : ''}>🚧 Em Andamento</option>
@@ -889,10 +915,10 @@
         }
         tarefasCadastradas.forEach(tarefa => {
             const linha = document.createElement('div');
-            linha.style.cssText = 'display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #edf2f7;';
+            linha.style.cssText = 'display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #edf2f7; flex-wrap:wrap;';
             linha.innerHTML = `
-                <input type="checkbox" ${tarefa.concluida ? 'checked' : ''} onchange="alternarTarefa('${tarefa.id}', this.checked)" style="width:auto; margin-bottom:0;">
-                <span style="flex:1; ${tarefa.concluida ? 'text-decoration:line-through; color:#a0aec0;' : ''}">${escapeHtml(tarefa.descricao)}</span>
+                <input type="checkbox" ${tarefa.concluida ? 'checked' : ''} onchange="alternarTarefa('${tarefa.id}', this.checked)" style="width:auto; min-width:20px; min-height:20px; margin-bottom:0; flex-shrink:0;">
+                <span style="flex:1; min-width:150px; word-break:break-word; ${tarefa.concluida ? 'text-decoration:line-through; color:#a0aec0;' : ''}">${escapeHtml(tarefa.descricao)}</span>
                 <button class="btn-acao" onclick="excluirTarefa('${tarefa.id}')" title="Excluir">🗑️</button>
             `;
             container.appendChild(linha);
@@ -1007,7 +1033,7 @@
     };
 
     window.excluirLancamento = async function (id) {
-        const itemSelecionado = lancamentos.find(l => l.id === id);
+        const itemSelecionado = lancamentos.find(l=> l.id === id);
         if (!itemSelecionado) return;
         const nomeBaseCategoria = itemSelecionado.categoria.split(' (')[0];
 
@@ -1169,7 +1195,7 @@
         canvasEl.parentElement.style.height = Math.max(220, linhas.length * 34) + 'px';
         if (linhas.length === 0) return;
 
-        const ctx = canvasEl.getContext('2d');
+        const ctx =canvasEl.getContext('2d');
         graficoCategorias = new Chart(ctx, {
             type: 'bar',
             data: {
