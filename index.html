@@ -11,7 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-    body { background: #f4f6f9; min-height: 100vh; overflow-x: hidden; }
+    html { overflow-x: hidden; width: 100%; }
+    body { background: #f4f6f9; min-height: 100vh; overflow-x: hidden; width: 100%; }
 
     /* TELA DE LOGIN */
     #login-screen {
@@ -40,18 +41,19 @@
     .btn-retry { background: #edf2f7; color: #2d3748; border: none; padding: 10px; width: 100%; border-radius: 6px; font-weight: 600; cursor: pointer; margin-top: -5px; margin-bottom: 15px; display: none; }
 
     /* APLICAÇÃO */
-    #app-screen { width: 100%; min-height: 100vh; display: flex; flex-wrap: wrap; }
-    .sidebar { width: 260px; flex-shrink: 0; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; }
+    #app-screen { width: 100%; max-width: 100%; min-height: 100vh; display: flex; flex-wrap: wrap; overflow-x: hidden; }
+    .sidebar { width: 260px; flex-shrink: 0; background: #ffffff; border-right: 1px solid #e2e8f0; display: flex; flex-direction: column; min-width: 0; }
     .sidebar-brand { padding: 20px; font-size: 1.1rem; font-weight: bold; color: #ff6b6b; border-bottom: 1px solid #edf2f7; }
     .sidebar-menu { list-style: none; padding: 15px 0; }
     .sidebar-menu li a { display: block; padding: 12px 20px; color: #4a5568; text-decoration: none; font-weight: 500; cursor: pointer; }
     .sidebar-menu li a:hover, .sidebar-menu li a.active { background: #fff5f5; color: #ff6b6b; border-right: 4px solid #ff6b6b; }
 
-    .main-container { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; }
-    .topbar { background: #ffffff; min-height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 12px 16px; gap: 10px; flex-wrap: wrap; row-gap: 8px; }
-    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; }.sync-badge.ok { background: #d4edda; color: #155724; }
+    .main-container { flex: 1 1 0%; min-width: 0; max-width: 100%; display: flex; flex-direction: column; overflow-x: hidden; }
+    .topbar { background: #ffffff; min-height: 70px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: flex-end; align-items: center; padding: 12px 16px; gap: 10px; flex-wrap: wrap; row-gap: 8px; max-width: 100%; }
+    .sync-badge { font-size: 0.72rem; padding: 5px 10px; border-radius: 999px; background: #edf2f7; color: #4a5568; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+    .sync-badge.ok { background: #d4edda; color: #155724; }
     .sync-badge.warn { background: #fff3cd; color: #856404; }
-    #user-greeting { font-size: 0.9rem; overflow-wrap: anywhere; }
+    #user-greeting { font-size: 0.9rem; overflow-wrap: anywhere; min-width: 0; flex-shrink: 1; }
     .btn-logout { background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; flex-shrink: 0; }
 
     .content { padding: 30px; max-width: 100%; overflow-x: hidden; }
@@ -102,20 +104,28 @@
         /* Filtro do mês empilhado */
         .filtro-mes-container { flex-direction: column; align-items: stretch; }
         .filtro-mes-container select { max-width: 100%; }
+
+        /* Metas e Tarefas: select empilha abaixo do título quando não cabe ao lado */
+        #lista-metas > div select { width: 100% !important; margin-top: 6px; }
+        #lista-metas > div, #lista-tarefas > div { min-width: 0; max-width: 100%; }
     }
+
+    /* Segurança contra overflow horizontal em qualquer largura de tela */
+    #lista-metas, #lista-tarefas, #lista-metas > div, #lista-tarefas > div,
+    .card, .content, .topbar > * { min-width: 0; }
 
     @media(max-width: 480px) {
         .login-card { padding: 24px; }
         .card { padding: 16px; }
         .content { padding: 12px; }
         .sidebar-brand { padding: 14px 16px; font-size: 1rem; }
-        h3 { font-size: 1.05rem; }        .grafico-wrap { height: 240px !important; }
+        h3 { font-size: 1.05rem; }
+        .grafico-wrap { height: 240px !important; }
         table { min-width: 420px; }
         th, td { padding: 8px 6px; font-size: 0.8rem; }
         .resumo-box { padding: 12px 14px; }
         .resumo-box span { font-size: 1.05rem; }
         .resumo-item p { font-size: 1.2rem; }
-        #lista-metas > div select { width: 100% !important; margin-top: 6px; }
         #lista-metas > div, #lista-tarefas > div { padding: 12px 0; }
     }
 
@@ -284,15 +294,15 @@
                                 <label>Quantidade de Parcelas / Meses</label>
                                 <select id="qtd-parcelas">
                                     <option value="1">1 mês (À vista)</option>
-                                    <option value="2">2 meses</option>
-                                    <option value="3">3 meses</option>
+                                    <option value="2">2 meses</option>                                <option value="3">3 meses</option>
                                     <option value="4">4 meses</option>
                                     <option value="5">5 meses</option>
                                     <option value="6">6 meses</option>
                                     <option value="7">7 meses</option>
                                     <option value="8">8 meses</option>
                                     <option value="9">9 meses</option>
-                                    <option value="10">10 meses</option>                <option value="11">11 meses</option>
+                                    <option value="10">10 meses</option>
+                                    <option value="11">11 meses</option>
                                     <option value="12">12 meses</option>
                                     <option value="15">15 meses</option>
                                     <option value="18">18 meses</option>
@@ -340,8 +350,7 @@
                         <option value="2026-06">Junho / 2026</option>
                         <option value="2026-07">Julho / 2026</option>
                         <option value="2026-08">Agosto / 2026</option>
-                        <option value="2026-09" selected>Setembro / 2026</option>
-                        <option value="2026-10">Outubro / 2026</option>
+                        <option value="2026-09" selected>Setembro / 2026</option>   <option value="2026-10">Outubro / 2026</option>
                         <option value="2026-11">Novembro / 2026</option>
                         <option value="2026-12">Dezembro / 2026</option>
                     </select>
@@ -559,8 +568,7 @@
             setLoginHabilitado(true);
         } catch (e) {
             console.error(e);
-            setSyncBadge('⚠️ Sem conexão', 'warn');
-            setLoginStatus('Não foi possível conectar ao banco de dados agora.');
+            setSyncBadge('⚠️ Sem conexão', 'warn');       setLoginStatus('Não foi possível conectar ao banco de dados agora.');
             document.getElementById('btn-retry').style.display = 'block';
         }
     };
@@ -574,7 +582,8 @@
             ['metas', carregarMetas],
             ['tarefas_casa', carregarTarefas]
         ];
-        tabelas.forEach(([tabela, recarregar]) => {      const canal = supabase
+        tabelas.forEach(([tabela, recarregar]) => {
+            const canal = supabase
                 .channel('realtime-' + tabela)
                 .on('postgres_changes', { event: '*', schema: 'public', table: tabela }, () => {
                     recarregar().catch(err => console.error(err));
@@ -881,8 +890,7 @@
     // ---------------------------------------------------------------
     // Lista de Tarefas da Casa
     // ---------------------------------------------------------------
-    window.cadastrarTarefa = async function (event) {
-        event.preventDefault();
+    window.cadastrarTarefa = async function (event) {      event.preventDefault();
         const descricao = document.getElementById('nova-tarefa-descricao').value.trim();
         if (!descricao) return;
 
@@ -1033,7 +1041,7 @@
     };
 
     window.excluirLancamento = async function (id) {
-        const itemSelecionado = lancamentos.find(l=> l.id === id);
+        const itemSelecionado = lancamentos.find(l => l.id === id);
         if (!itemSelecionado) return;
         const nomeBaseCategoria = itemSelecionado.categoria.split(' (')[0];
 
@@ -1180,8 +1188,7 @@
         if (linhas.length === 0) {
             tabelaEl.innerHTML = `<tr><td colspan="3" class="empty-msg">Nenhuma saída registrada neste mês.</td></tr>`;
         } else {
-            linhas.forEach(l => {
-                const linha = document.createElement('tr');
+            linhas.forEach(l => {       const linha = document.createElement('tr');
                 linha.innerHTML = `
                     <td>${escapeHtml(l.categoria)}</td>
                     <td>R$ ${l.total.toFixed(2)}</td>
@@ -1195,7 +1202,7 @@
         canvasEl.parentElement.style.height = Math.max(220, linhas.length * 34) + 'px';
         if (linhas.length === 0) return;
 
-        const ctx =canvasEl.getContext('2d');
+        const ctx = canvasEl.getContext('2d');
         graficoCategorias = new Chart(ctx, {
             type: 'bar',
             data: {
