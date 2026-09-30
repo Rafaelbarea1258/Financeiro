@@ -1177,7 +1177,7 @@
             const linha = document.createElement('tr');
             linha.innerHTML = `
                 <td>${item.data.split('-').reverse().join('/')}</td>
-                <td>${escapeHtml(item.tipo)}td>
+                <td>${escapeHtml(item.tipo)}</td>
                 <td>${escapeHtml(item.categoria)}</td>
                 <td>${item.observacao ? escapeHtml(item.observacao) : '<span style="color:#a0aec0;">—</span>'}</td>
                 <td>R$ ${item.valor}</td>
@@ -1343,7 +1343,7 @@
         const { linhas } = obterDadosRelatorioCategorias();
 
         tabelaEl.innerHTML = '';
-        if(linhas.length === 0) {
+        if (linhas.length === 0) {
             tabelaEl.innerHTML = `<tr><td colspan="3" class="empty-msg">Nenhuma saída registrada neste mês.</td></tr>`;
         } else {
             linhas.forEach(l => {
