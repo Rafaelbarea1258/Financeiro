@@ -386,6 +386,22 @@
                         <canvas id="graficoMensal"></canvas>
                     </div>
                 </div>
+
+                <div class="card">
+                    <h3>📅 Comparativo Semestral: Entradas vs Saídas</h3>
+                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Soma de todos os lançamentos agrupados por semestre, para comparar a evolução ao longo do tempo.</p>
+                    <div class="grafico-wrap" style="width: 100%; max-width: 700px; margin: 0 auto; height: 240px;">
+                        <canvas id="graficoSemestral"></canvas>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3>🗓️ Comparativo Anual: Entradas vs Saídas</h3>
+                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Soma de todos os lançamentos agrupados por ano.</p>
+                    <div class="grafico-wrap" style="width: 100%; max-width: 700px; margin: 0 auto; height: 240px;">
+                        <canvas id="graficoAnual"></canvas>
+                    </div>
+                </div>
             </div>
 
             <!-- ABA SIMULADOR DE COMPRA -->
@@ -489,7 +505,7 @@
 <script>
 (function () {
     // ---------------------------------------------------------------
-    // Configuração do Supabase (chave pública — segurapara expor no
+    // Configuração do Supabase (chave pública — segura para expor no
     // navegador, desde que o RLS esteja habilitado, como no schema
     // fornecido junto com este arquivo).
     // ---------------------------------------------------------------
@@ -505,6 +521,8 @@
     let tarefasCadastradas = [];
     let meuGrafico = null;
     let graficoCategorias = null;
+    let graficoSemestral = null;
+    let graficoAnual = null;
     let canaisRealtime = [];
 
     function escapeHtml(str) {
@@ -631,8 +649,7 @@
         const { data, error } = await supabase.from('usuarios').select('*').order('created_at');
         if (error) throw error;
         usuariosCadastrados = data || [];
-        preencherSelectUsuarios();
-        atualizarTabelaUsuarios();
+        preencherSelectUsuarios();        atualizarTabelaUsuarios();
     }
 
     async function carregarCategorias() {
@@ -746,7 +763,8 @@
         if (usuariosCadastrados.length <= 1) {
             alert("Você precisa manter pelo menos um usuário no sistema!");
             return;
-}       if (!confirm("Deseja realmente excluir este usuário?")) return;
+        }
+        if (!confirm("Deseja realmente excluir este usuário?")) return;
         const { error } = await supabase.from('usuarios').delete().eq('id', id);
         if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
         await carregarUsuarios();
@@ -823,7 +841,8 @@
         categoriasCadastradas.forEach((cat) => {
             const linha = document.createElement('tr');
             linha.innerHTML = `
-                <td>${escapeHtml(cat.tipo)}</td>   <td>${escapeHtml(cat.nome)}</td>
+                <td>${escapeHtml(cat.tipo)}</td>
+                <td>${escapeHtml(cat.nome)}</td>
                 <td><button class="btn-acao" onclick="excluirCategoria('${cat.id}')" title="Excluir">🗑️</button></td>
             `;
             corpo.appendChild(linha);
@@ -960,7 +979,8 @@
             linha.innerHTML = `
                 <input type="checkbox" ${tarefa.concluida ? 'checked' : ''} onchange="alternarTarefa('${tarefa.id}', this.checked)" style="width:auto; min-width:20px; min-height:20px; margin-bottom:0; flex-shrink:0;">
                 <span style="flex:1; min-width:150px; word-break:break-word;">${escapeHtml(tarefa.descricao)}</span>
-                <button class="btn-acao" onclick="excluirTarefa('${tarefa.id}')" title="Excluir">🗑️</button>    `;
+                <button class="btn-acao" onclick="excluirTarefa('${tarefa.id}')" title="Excluir">🗑️</button>
+            `;
             container.appendChild(linha);
         });
     }
@@ -1041,7 +1061,9 @@
     // Lançamentos
     // ---------------------------------------------------------------
     window.salvarLancamento = async function (event) {
-        event.preventDefault();  const editId = document.getElementById('edit-index').value;
+        event.preventDefault();
+
+        const editId = document.getElementById('edit-index').value;
         const dataInicial = document.getElementById('data').value;
         const tipo = document.getElementById('tipo').value;
         const categoriaDigitada = document.getElementById('categoria-input').value.trim();
@@ -1102,7 +1124,7 @@
         document.getElementById('titulo-form').innerText = "Editar Lançamento";
         document.getElementById('btn-submit-text').innerText = "Salvar Alterações";
 
-        window.scrollTo({top: 0, behavior: 'smooth' });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     window.excluirLancamento = async function (id) {
@@ -1155,7 +1177,7 @@
             const linha = document.createElement('tr');
             linha.innerHTML = `
                 <td>${item.data.split('-').reverse().join('/')}</td>
-                <td>${escapeHtml(item.tipo)}</td>
+                <td>${escapeHtml(item.tipo)}td>
                 <td>${escapeHtml(item.categoria)}</td>
                 <td>${item.observacao ? escapeHtml(item.observacao) : '<span style="color:#a0aec0;">—</span>'}</td>
                 <td>R$ ${item.valor}</td>
@@ -1205,10 +1227,80 @@
                     borderWidth: 1
                 }]
             },
-            options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } }
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, scales: { x: { beginAtZero: true } } }
         });
 
         atualizarRelatorioCategorias();
+        atualizarGraficosPeriodo();
+    };
+
+    // ---------------------------------------------------------------
+    // Comparativos por período (semestral e anual)
+    // ---------------------------------------------------------------
+    function agregarLancamentosPorChave(chaveFn) {
+        const mapa = {};
+        lancamentos.forEach(item => {
+            const chave = chaveFn(item.data);
+            if (!mapa[chave]) mapa[chave] = { entradas: 0, saidas: 0 };
+            const val = parseFloat(item.valor);
+            if (item.tipo === 'Entrada') mapa[chave].entradas += val; else mapa[chave].saidas += val;
+        });
+        return mapa;
+    }
+
+    function renderizarGraficoComparativo(canvasId, labels, entradas, saidas, graficoAtual) {
+        const canvasEl = document.getElementById(canvasId);
+        if (!canvasEl) return null;
+        if (graficoAtual) graficoAtual.destroy();
+        canvasEl.parentElement.style.height = Math.max(220, labels.length * 50) + 'px';
+        if (labels.length === 0) return null;
+        const ctx = canvasEl.getContext('2d');
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Entradas', data: entradas, backgroundColor: '#27ae60' },
+                    { label: 'Saídas', data: saidas, backgroundColor: '#e74c3c' }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'bottom' } },
+                scales: { x: { beginAtZero: true } }
+            }
+        });
+    }
+
+    window.atualizarGraficosPeriodo = function () {
+        // Semestral: agrupa por ano + semestre (Jan-Jun / Jul-Dez)
+        const mapaSemestre = agregarLancamentosPorChave(data => {
+            const [ano, mes] = data.split('-');
+            const semestre = parseInt(mes, 10) <= 6 ? '1º Sem.' : '2º Sem.';
+            return `${ano}|${semestre}`;
+        });
+        const chavesSemestre = Object.keys(mapaSemestre).sort();
+        const labelsSemestre = chavesSemestre.map(c => { const [ano, sem] = c.split('|'); return `${sem} ${ano}`; });
+        graficoSemestral = renderizarGraficoComparativo(
+            'graficoSemestral',
+            labelsSemestre,
+            chavesSemestre.map(c => mapaSemestre[c].entradas),
+            chavesSemestre.map(c => mapaSemestre[c].saidas),
+            graficoSemestral
+        );
+
+        // Anual: agrupa por ano
+        const mapaAno = agregarLancamentosPorChave(data => data.split('-')[0]);
+        const chavesAno = Object.keys(mapaAno).sort();
+        graficoAnual = renderizarGraficoComparativo(
+            'graficoAnual',
+            chavesAno,
+            chavesAno.map(c => mapaAno[c].entradas),
+            chavesAno.map(c => mapaAno[c].saidas),
+            graficoAnual
+        );
     };
 
     // ---------------------------------------------------------------
@@ -1251,7 +1343,7 @@
         const { linhas } = obterDadosRelatorioCategorias();
 
         tabelaEl.innerHTML = '';
-        if (linhas.length === 0) {
+        if(linhas.length === 0) {
             tabelaEl.innerHTML = `<tr><td colspan="3" class="empty-msg">Nenhuma saída registrada neste mês.</td></tr>`;
         } else {
             linhas.forEach(l => {
@@ -1261,7 +1353,8 @@
                     <td>R$ ${l.total.toFixed(2)}</td>
                     <td>${l.percentual.toFixed(1)}%</td>
                 `;
-                tabelaEl.appendChild(linha);    });
+                tabelaEl.appendChild(linha);
+            });
         }
 
         if (graficoCategorias) { graficoCategorias.destroy(); graficoCategorias = null; }
@@ -1334,7 +1427,8 @@
         const linhasHtml = linhas.map(l => `<tr><td>${escapeHtml(l.categoria)}</td><td>R$ ${l.total.toFixed(2)}</td><td>${l.percentual.toFixed(1)}%</td></tr>`).join('');
         const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8"><title>Relatório</title></head>
-<body>   <h2>Relatório Mensal por Categoria — ${escapeHtml(mesLabel)}</h2>
+<body>
+    <h2>Relatório Mensal por Categoria — ${escapeHtml(mesLabel)}</h2>
     <p>Total de Saídas: R$ ${totalGeral.toFixed(2)}</p>
     <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;">
         <tr><th>Categoria</th><th>Total Gasto</th><th>% do Total</th></tr>
