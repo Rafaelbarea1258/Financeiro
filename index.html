@@ -297,8 +297,7 @@
                             <datalist id="lista-categorias"></datalist>
 
                             <div id="bloco-parcelas">
-                                <label>Quantidade de Parcelas / Meses</label>
-                                <select id="qtd-parcelas">
+                                <label>Quantidade de Parcelas / Meses</label>                                <select id="qtd-parcelas">
                                     <option value="1">1 mês (À vista)</option>
                                     <option value="2">2 meses</option>
                                     <option value="3">3 meses</option>
@@ -388,8 +387,22 @@
                 </div>
 
                 <div class="card">
-                    <h3>📅 Comparativo Semestral: Entradas vs Saídas</h3>
-                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Soma de todos os lançamentos agrupados por semestre, para comparar a evolução ao longo do tempo.</p>
+                    <h3>📅 Comparativo por Período: Entradas vs Saídas</h3>
+                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Escolha de quantos em quantos meses agrupar os lançamentos, para comparar a evolução ao longo do tempo.</p>
+                    <div class="filtro-mes-container">
+                        <label for="filtro-qtd-meses-periodo" style="margin-bottom:0; font-weight:bold;">Agrupar a cada:</label>
+                        <select id="filtro-qtd-meses-periodo" onchange="atualizarGraficosPeriodo()">
+                            <option value="1">1 mês</option>
+                            <option value="2">2 meses</option>
+                            <option value="3">3 meses</option>
+                            <option value="4">4 meses</option>
+                            <option value="6" selected>6 meses</option>
+                            <option value="9">9 meses</option>
+                            <option value="12">12 meses</option>
+                            <option value="18">18 meses</option>
+                            <option value="24">24 meses</option>
+                        </select>
+                    </div>
                     <div class="grafico-wrap" style="width: 100%; max-width: 700px; margin: 0 auto; height: 240px;">
                         <canvas id="graficoSemestral"></canvas>
                     </div>
@@ -456,8 +469,7 @@
                         <input type="text" id="nova-cat-nome" placeholder="Ex: Mercado, Luz, Aluguel..." required>
 
                         <button type="submit" class="btn-primary">Adicionar Categoria</button>
-                    </form>
-                </div>
+                    </form>    </div>
 
                 <div class="card">
                     <h3>Categorias Cadastradas</h3>
@@ -626,8 +638,7 @@
             ['categorias', carregarCategorias],
             ['contas_pendentes', carregarContasPendentes],
             ['lancamentos', carregarLancamentos],
-            ['metas', carregarMetas],
-            ['tarefas_casa', carregarTarefas]
+            ['metas', carregarMetas],   ['tarefas_casa', carregarTarefas]
         ];
         tabelas.forEach(([tabela, recarregar]) => {
             const canal = supabase
@@ -649,7 +660,8 @@
         const { data, error } = await supabase.from('usuarios').select('*').order('created_at');
         if (error) throw error;
         usuariosCadastrados = data || [];
-        preencherSelectUsuarios();        atualizarTabelaUsuarios();
+        preencherSelectUsuarios();
+        atualizarTabelaUsuarios();
     }
 
     async function carregarCategorias() {
@@ -1012,8 +1024,7 @@
             const dataFormatada = new Date(tarefa.concluida_em).toLocaleDateString('pt-BR');
             linha.innerHTML = `
                 <td>${escapeHtml(tarefa.descricao)}</td>
-                <td>${dataFormatada}</td>
-            `;
+                <td>${dataFormatada}</td>         `;
             corpo.appendChild(linha);
         });
     };
@@ -1235,8 +1246,10 @@
     };
 
     // ---------------------------------------------------------------
-    // Comparativos por período (semestral e anual)
+    // Comparativos por período (agrupamento configurável e anual)
     // ---------------------------------------------------------------
+    const MESES_ABREV = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
     function agregarLancamentosPorChave(chaveFn) {
         const mapa = {};
         lancamentos.forEach(item => {
@@ -1246,6 +1259,32 @@
             if (item.tipo === 'Entrada') mapa[chave].entradas += val; else mapa[chave].saidas += val;
         });
         return mapa;
+    }
+
+    // Agrupa os lançamentos em blocos de "qtdMeses" meses consecutivos
+    // (ex: 3 em 3, 6 em 6, 12 em 12...), a partir de janeiro do ano 0.
+    function agregarPorPeriodoMeses(qtdMeses) {
+        const mapa = {};
+        lancamentos.forEach(item => {
+            const [anoStr, mesStr] = item.data.split('-');
+            const totalMeses = parseInt(anoStr, 10) * 12 + (parseInt(mesStr, 10) - 1);
+            const grupo = Math.floor(totalMeses / qtdMeses);
+            if (!mapa[grupo]) mapa[grupo] = { entradas: 0, saidas: 0, inicioMeses: grupo * qtdMeses };
+            const val = parseFloat(item.valor);
+            if (item.tipo === 'Entrada') mapa[grupo].entradas += val; else mapa[grupo].saidas += val;
+        });
+        return mapa;
+    }
+
+    function rotuloPeriodo(inicioMeses, qtdMeses) {
+        const anoIni = Math.floor(inicioMeses / 12);
+        const mesIni = inicioMeses % 12;
+        if (qtdMeses <= 1) return `${MESES_ABREV[mesIni]}/${anoIni}`;
+        const fimMeses = inicioMeses + qtdMeses - 1;
+        const anoFim = Math.floor(fimMeses / 12);
+        const mesFim = fimMeses % 12;
+        if (anoIni === anoFim) return `${MESES_ABREV[mesIni]}-${MESES_ABREV[mesFim]}/${anoIni}`;
+        return `${MESES_ABREV[mesIni]}/${anoIni} - ${MESES_ABREV[mesFim]}/${anoFim}`;
     }
 
     function renderizarGraficoComparativo(canvasId, labels, entradas, saidas, graficoAtual) {
@@ -1275,19 +1314,19 @@
     }
 
     window.atualizarGraficosPeriodo = function () {
-        // Semestral: agrupa por ano + semestre (Jan-Jun / Jul-Dez)
-        const mapaSemestre = agregarLancamentosPorChave(data => {
-            const [ano, mes] = data.split('-');
-            const semestre = parseInt(mes, 10) <= 6 ? '1º Sem.' : '2º Sem.';
-            return `${ano}|${semestre}`;
-        });
-        const chavesSemestre = Object.keys(mapaSemestre).sort();
-        const labelsSemestre = chavesSemestre.map(c => { const [ano, sem] = c.split('|'); return `${sem} ${ano}`; });
+        // Período configurável: agrupa de "qtdMeses" em "qtdMeses" meses,
+        // conforme escolhido no seletor "Agrupar a cada".
+        const selectQtdMeses = document.getElementById('filtro-qtd-meses-periodo');
+        const qtdMeses = selectQtdMeses ? (parseInt(selectQtdMeses.value, 10) || 6) : 6;
+
+        const mapaPeriodo = agregarPorPeriodoMeses(qtdMeses);
+        const gruposOrdenados = Object.keys(mapaPeriodo).map(Number).sort((a, b) => a - b);
+        const labelsPeriodo = gruposOrdenados.map(g => rotuloPeriodo(mapaPeriodo[g].inicioMeses, qtdMeses));
         graficoSemestral = renderizarGraficoComparativo(
             'graficoSemestral',
-            labelsSemestre,
-            chavesSemestre.map(c => mapaSemestre[c].entradas),
-            chavesSemestre.map(c => mapaSemestre[c].saidas),
+            labelsPeriodo,
+            gruposOrdenados.map(g => mapaPeriodo[g].entradas),
+            gruposOrdenados.map(g => mapaPeriodo[g].saidas),
             graficoSemestral
         );
 
