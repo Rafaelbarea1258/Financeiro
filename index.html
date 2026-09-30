@@ -241,6 +241,25 @@
                     <div id="lista-tarefas"></div>
                 </div>
 
+                <div class="card" style="border-left: 4px solid #38a169;">
+                    <h3>📈 Relatório de Tarefas Concluídas</h3>
+                    <div class="filtro-mes-container">
+                        <label for="filtro-mes-tarefas" style="margin-bottom:0; font-weight:bold;">Mês:</label>
+                        <select id="filtro-mes-tarefas" onchange="atualizarRelatorioTarefas()"></select>
+                    </div>
+                    <div class="resumo-box">
+                        <strong>Tarefas concluídas no mês:</strong>
+                        <span id="total-tarefas-concluidas-mes" class="text-green">0</span>
+                    </div>
+                    <div class="table-scroll">
+                        <table>
+                            <thead><tr><th>Tarefa</th><th>Concluída em</th></tr></thead>
+                            <tbody id="tabela-tarefas-concluidas"></tbody>
+                        </table>
+                    </div>
+                    <div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div>
+                </div>
+
                 <div class="card" style="border-left: 4px solid #f39c12;">
                     <h3>🔔 Contas a Vencer (Próximos 15 dias)</h3>
                     <div class="table-scroll">
@@ -293,12 +312,16 @@
                                     <option value="11">11 meses</option>
                                     <option value="12">12 meses</option>
                                     <option value="15">15 meses</option>
-                                    <option value="18">18 meses</option>      <option value="24">24 meses</option>
+                                    <option value="18">18 meses</option>
+                                    <option value="24">24 meses</option>
                                 </select>
                             </div>
 
                             <label>Valor da Parcela (R$)</label>
                             <input type="number" step="0.01" id="valor" placeholder="0.00" required>
+
+                            <label>Observação (opcional)</label>
+                            <input type="text" id="observacao" placeholder="Ex: O que está comprando, detalhes...">
 
                             <button type="submit" class="btn-primary" id="btn-submit-text">Adicionar Lançamento</button>
                         </form>
@@ -316,7 +339,7 @@
                     <h3>Lista de Lançamentos do Mês</h3>
                     <div class="table-scroll">
                     <table>
-                        <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Valor</th><th>Ações</th></tr></thead>
+                        <thead><tr><th>Data</th><th>Tipo</th><th>Categoria</th><th>Observação</th><th>Valor</th><th>Ações</th></tr></thead>
                         <tbody id="tabela-corpo"></tbody>
                     </table>
                     </div>
@@ -466,7 +489,7 @@
 <script>
 (function () {
     // ---------------------------------------------------------------
-    // Configuração do Supabase (chave pública — segura para expor no
+    // Configuração do Supabase (chave pública — segurapara expor no
     // navegador, desde que o RLS esteja habilitado, como no schema
     // fornecido junto com este arquivo).
     // ---------------------------------------------------------------
@@ -518,6 +541,7 @@
 
     gerarOpcoesMes('filtro-mes');
     gerarOpcoesMes('filtro-mes-grafico');
+    gerarOpcoesMes('filtro-mes-tarefas');
 
     function setSyncBadge(texto, classe) {
         const badge = document.getElementById('sync-badge');
@@ -638,6 +662,7 @@
         if (error) throw error;
         tarefasCadastradas = data || [];
         atualizarListaTarefas();
+        atualizarRelatorioTarefas();
     }
 
     async function carregarLancamentos() {
@@ -721,8 +746,7 @@
         if (usuariosCadastrados.length <= 1) {
             alert("Você precisa manter pelo menos um usuário no sistema!");
             return;
-        }
-        if (!confirm("Deseja realmente excluir este usuário?")) return;
+}       if (!confirm("Deseja realmente excluir este usuário?")) return;
         const { error } = await supabase.from('usuarios').delete().eq('id', id);
         if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
         await carregarUsuarios();
@@ -799,8 +823,7 @@
         categoriasCadastradas.forEach((cat) => {
             const linha = document.createElement('tr');
             linha.innerHTML = `
-                <td>${escapeHtml(cat.tipo)}</td>
-                <td>${escapeHtml(cat.nome)}</td>
+                <td>${escapeHtml(cat.tipo)}</td>   <td>${escapeHtml(cat.nome)}</td>
                 <td><button class="btn-acao" onclick="excluirCategoria('${cat.id}')" title="Excluir">🗑️</button></td>
             `;
             corpo.appendChild(linha);
@@ -834,7 +857,8 @@
 
         const valorAtual = inputCategoria.value.trim();
         if (valorAtual && !filtradas.some(c => c.nome.toLowerCase() === valorAtual.toLowerCase())) {
-            inputCategoria.value = '';        }
+            inputCategoria.value = '';
+        }
     };
 
     // ---------------------------------------------------------------
@@ -906,7 +930,8 @@
     };
 
     window.alternarTarefa = async function (id, concluida) {
-        const { error } = await supabase.from('tarefas_casa').update({ concluida }).eq('id', id);
+        const atualizacao = { concluida, concluida_em: concluida ? new Date().toISOString() : null };
+        const { error } = await supabase.from('tarefas_casa').update(atualizacao).eq('id', id);
         if (error) { alert("Não foi possível atualizar a tarefa agora. Tente novamente."); return; }
         await carregarTarefas();
     };
@@ -922,21 +947,56 @@
         const container = document.getElementById('lista-tarefas');
         if (!container) return;
         container.innerHTML = '';
-        if (tarefasCadastradas.length === 0) {
-            container.innerHTML = '<p class="empty-msg">Nenhuma tarefa cadastrada ainda.</p>';
+        // Só mostra as tarefas ainda pendentes: assim que marcada como feita,
+        // a tarefa sai deste painel (o histórico fica no Relatório abaixo).
+        const pendentes = tarefasCadastradas.filter(tarefa => !tarefa.concluida);
+        if (pendentes.length === 0) {
+            container.innerHTML = '<p class="empty-msg">Nenhuma tarefa pendente. 🎉</p>';
             return;
         }
-        tarefasCadastradas.forEach(tarefa => {
+        pendentes.forEach(tarefa => {
             const linha = document.createElement('div');
             linha.style.cssText = 'display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid #edf2f7; flex-wrap:wrap;';
             linha.innerHTML = `
                 <input type="checkbox" ${tarefa.concluida ? 'checked' : ''} onchange="alternarTarefa('${tarefa.id}', this.checked)" style="width:auto; min-width:20px; min-height:20px; margin-bottom:0; flex-shrink:0;">
-                <span style="flex:1; min-width:150px; word-break:break-word; ${tarefa.concluida ? 'text-decoration:line-through; color:#a0aec0;' : ''}">${escapeHtml(tarefa.descricao)}</span>
-                <button class="btn-acao" onclick="excluirTarefa('${tarefa.id}')" title="Excluir">🗑️</button>
-            `;
+                <span style="flex:1; min-width:150px; word-break:break-word;">${escapeHtml(tarefa.descricao)}</span>
+                <button class="btn-acao" onclick="excluirTarefa('${tarefa.id}')" title="Excluir">🗑️</button>    `;
             container.appendChild(linha);
         });
     }
+
+    // ---------------------------------------------------------------
+    // Relatório de tarefas concluídas (métricas por mês)
+    // ---------------------------------------------------------------
+    window.atualizarRelatorioTarefas = function () {
+        const selectMes = document.getElementById('filtro-mes-tarefas');
+        const spanTotal = document.getElementById('total-tarefas-concluidas-mes');
+        const corpo = document.getElementById('tabela-tarefas-concluidas');
+        if (!selectMes || !spanTotal || !corpo) return;
+
+        const mesFiltro = selectMes.value;
+        const concluidasDoMes = tarefasCadastradas
+            .filter(t => t.concluida && t.concluida_em && t.concluida_em.startsWith(mesFiltro))
+            .slice()
+            .sort((a, b) => new Date(b.concluida_em) - new Date(a.concluida_em));
+
+        spanTotal.innerText = concluidasDoMes.length;
+
+        corpo.innerHTML = '';
+        if (concluidasDoMes.length === 0) {
+            corpo.innerHTML = `<tr><td colspan="2" class="empty-msg">Nenhuma tarefa concluída neste mês.</td></tr>`;
+            return;
+        }
+        concluidasDoMes.forEach(tarefa => {
+            const linha = document.createElement('tr');
+            const dataFormatada = new Date(tarefa.concluida_em).toLocaleDateString('pt-BR');
+            linha.innerHTML = `
+                <td>${escapeHtml(tarefa.descricao)}</td>
+                <td>${dataFormatada}</td>
+            `;
+            corpo.appendChild(linha);
+        });
+    };
 
     // ---------------------------------------------------------------
     // Contas a vencer
@@ -973,7 +1033,7 @@
 
     window.marcarComoPago = async function (id) {
         const { error } = await supabase.from('contas_pendentes').delete().eq('id', id);
-        if (error){ alert("Não foi possível atualizar agora. Tente novamente."); return; }
+        if (error) { alert("Não foi possível atualizar agora. Tente novamente."); return; }
         await carregarContasPendentes();
     };
 
@@ -981,14 +1041,13 @@
     // Lançamentos
     // ---------------------------------------------------------------
     window.salvarLancamento = async function (event) {
-        event.preventDefault();
-
-        const editId = document.getElementById('edit-index').value;
+        event.preventDefault();  const editId = document.getElementById('edit-index').value;
         const dataInicial = document.getElementById('data').value;
         const tipo = document.getElementById('tipo').value;
         const categoriaDigitada = document.getElementById('categoria-input').value.trim();
         const valorParcelaDigitado = parseFloat(document.getElementById('valor').value).toFixed(2);
         const qtdParcelas = tipo === 'Saída' ? parseInt(document.getElementById('qtd-parcelas').value) : 1;
+        const observacaoDigitada = document.getElementById('observacao').value.trim();
 
         if (!categoriaDigitada) {
             alert("Selecione ou cadastre uma categoria antes de salvar.");
@@ -1009,12 +1068,12 @@
                 dataObj.setMonth(dataObj.getMonth() + i);
                 let dataFormatada = dataObj.toISOString().split('T')[0];
                 let nomeCategoria = qtdParcelas > 1 ? `${categoria} (${i + 1}/${qtdParcelas})` : categoria;
-                novos.push({ data: dataFormatada, tipo: tipo, categoria: nomeCategoria, valor: valorParcelaDigitado });
+                novos.push({ data: dataFormatada, tipo: tipo, categoria: nomeCategoria, valor: valorParcelaDigitado, observacao: observacaoDigitada || null });
             }
             const { error } = await supabase.from('lancamentos').insert(novos);
             if (error) { alert("Não foi possível salvar o lançamento agora. Tente novamente."); return; }
         } else {
-            const atualizado = { data: dataInicial, tipo: tipo, categoria: categoria, valor: valorParcelaDigitado };
+            const atualizado = { data: dataInicial, tipo: tipo, categoria: categoria, valor: valorParcelaDigitado, observacao: observacaoDigitada || null };
             const { error } = await supabase.from('lancamentos').update(atualizado).eq('id', editId);
             if (error) { alert("Não foi possível salvar as alterações agora. Tente novamente."); return; }
             document.getElementById('edit-index').value = -1;
@@ -1036,13 +1095,14 @@
         atualizarCategorias();
         document.getElementById('categoria-input').value = item.categoria.split(' (')[0];
         document.getElementById('valor').value = item.valor;
+        document.getElementById('observacao').value = item.observacao || '';
         document.getElementById('qtd-parcelas').value = '1';
 
         document.getElementById('edit-index').value = id;
         document.getElementById('titulo-form').innerText = "Editar Lançamento";
         document.getElementById('btn-submit-text').innerText = "Salvar Alterações";
 
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        window.scrollTo({top: 0, behavior: 'smooth' });
     };
 
     window.excluirLancamento = async function (id) {
@@ -1087,7 +1147,7 @@
         spanSaldo.className = saldoFinal >= 0 ? 'text-green' : 'text-red';
 
         if (lancamentosFiltrados.length === 0) {
-            corpo.innerHTML = `<tr><td colspan="5" class="empty-msg">Nenhum lançamento encontrado para este mês.</td></tr>`;
+            corpo.innerHTML = `<tr><td colspan="6" class="empty-msg">Nenhum lançamento encontrado para este mês.</td></tr>`;
             return;
         }
 
@@ -1097,6 +1157,7 @@
                 <td>${item.data.split('-').reverse().join('/')}</td>
                 <td>${escapeHtml(item.tipo)}</td>
                 <td>${escapeHtml(item.categoria)}</td>
+                <td>${item.observacao ? escapeHtml(item.observacao) : '<span style="color:#a0aec0;">—</span>'}</td>
                 <td>R$ ${item.valor}</td>
                 <td>
                     <button class="btn-acao" onclick="editarLancamento('${item.id}')" title="Editar">✏️</button>
@@ -1200,8 +1261,7 @@
                     <td>R$ ${l.total.toFixed(2)}</td>
                     <td>${l.percentual.toFixed(1)}%</td>
                 `;
-                tabelaEl.appendChild(linha);
-            });
+                tabelaEl.appendChild(linha);    });
         }
 
         if (graficoCategorias) { graficoCategorias.destroy(); graficoCategorias = null; }
@@ -1274,8 +1334,7 @@
         const linhasHtml = linhas.map(l => `<tr><td>${escapeHtml(l.categoria)}</td><td>R$ ${l.total.toFixed(2)}</td><td>${l.percentual.toFixed(1)}%</td></tr>`).join('');
         const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8"><title>Relatório</title></head>
-<body>
-    <h2>Relatório Mensal por Categoria — ${escapeHtml(mesLabel)}</h2>
+<body>   <h2>Relatório Mensal por Categoria — ${escapeHtml(mesLabel)}</h2>
     <p>Total de Saídas: R$ ${totalGeral.toFixed(2)}</p>
     <table border="1" cellspacing="0" cellpadding="6" style="border-collapse:collapse;">
         <tr><th>Categoria</th><th>Total Gasto</th><th>% do Total</th></tr>
