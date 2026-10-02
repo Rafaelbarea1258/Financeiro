@@ -445,6 +445,16 @@
                         <label for="filtro-mes-devocional" style="margin-bottom:0; font-weight:bold;">Mês:</label>
                         <select id="filtro-mes-devocional" onchange="atualizarListaDevocionais()"></select>
                     </div>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                        <label style="display:flex; align-items:center; gap:6px; margin-bottom:0; font-weight:normal; cursor:pointer;">
+                            <input type="checkbox" id="selecionar-todos-devocionais" onchange="alternarTodosDevocionais(this.checked)" style="width:auto; margin-bottom:0;">
+                            Selecionar todos
+                        </label>
+                        <div style="display:flex; gap:10px; flex-wrap:wrap; margin-left:auto;">
+                            <button type="button" class="btn-primary" style="width:auto; padding:8px 16px; margin-bottom:0;" onclick="exportarDevocionalPDF()">📄 Exportar PDF</button>
+                            <button type="button" class="btn-primary" style="width:auto; padding:8px 16px; margin-bottom:0; background:#3182ce;" onclick="exportarDevocionalWord()">📝 Exportar Word</button>
+                        </div>
+                    </div>
                     <div id="lista-devocionais"></div>
                 </div>
             </div>
@@ -1137,7 +1147,10 @@
             bloco.style.cssText = 'padding:15px 0; border-bottom:1px solid #edf2f7;';
             bloco.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
-                    <strong style="color:#805ad5;">${diaSemana}, ${dataFormatada}</strong>
+                    <label style="display:flex; align-items:flex-start; gap:8px; margin-bottom:0; font-weight:normal; cursor:pointer; flex:1; min-width:150px;">
+                        <input type="checkbox" class="checkbox-devocional" data-id="${d.id}" style="width:auto; margin-bottom:0; margin-top:4px; flex-shrink:0;">
+                        <strong style="color:#805ad5;">${diaSemana}, ${dataFormatada}</strong>
+                    </label>
                     <button class="btn-acao" onclick="excluirDevocional('${d.id}')" title="Excluir">🗑️</button>
                 </div>
                 ${d.versiculo ? `<p style="margin-top:8px;"><strong>Versículo:</strong> ${nl2br(d.versiculo)}</p>` : ''}
@@ -1146,6 +1159,109 @@
             `;
             container.appendChild(bloco);
         });
+
+        const checkboxTodos = document.getElementById('selecionar-todos-devocionais');
+        if (checkboxTodos) checkboxTodos.checked = false;
+    };
+
+    window.alternarTodosDevocionais = function (marcado) {
+        document.querySelectorAll('.checkbox-devocional').forEach(cb => { cb.checked = marcado; });
+    };
+
+    function obterDevocionaisSelecionados() {
+        const idsMarcados = Array.from(document.querySelectorAll('.checkbox-devocional:checked')).map(cb => cb.dataset.id);
+        return devocionaisCadastrados
+            .filter(d => idsMarcados.includes(d.id))
+            .slice()
+            .sort((a, b) => new Date(a.data) - new Date(b.data));
+    }
+
+    function nomeArquivoDevocional() {
+        return 'devocionais-' + new Date().toISOString().split('T')[0];
+    }
+
+    window.exportarDevocionalPDF = function () {
+        const selecionados = obterDevocionaisSelecionados();
+        if (selecionados.length === 0) { alert('Selecione ao menos um devocional para exportar (ou use "Selecionar todos").'); return; }
+        if (!window.jspdf) { alert('A biblioteca de exportação ainda não carregou. Tente novamente em instantes.'); return; }
+
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        const larguraUtil = 180;
+        let y = 18;
+
+        doc.setFontSize(16);
+        doc.text('Devocionais', 14, y);
+        y += 10;
+
+        selecionados.forEach((d, idx) => {
+            const dataObj = new Date(d.data + 'T00:00:00');
+            const diaSemana = DIAS_SEMANA[dataObj.getDay()];
+            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+
+            if (y > 270) { doc.addPage(); y = 18; }
+            doc.setFontSize(12);
+            doc.setFont(undefined, 'bold');
+            doc.text(`${diaSemana}, ${dataFormatada}`, 14, y);
+            doc.setFont(undefined, 'normal');
+            y += 7;
+            doc.setFontSize(10);
+
+            const campos = [['Versículo', d.versiculo], ['O que Deus falou', d.palavra], ['Profecia', d.profecia]];
+            campos.forEach(([rotulo, texto]) => {
+                if (!texto) return;
+                const linhas = doc.splitTextToSize(`${rotulo}: ${texto}`, larguraUtil);
+                linhas.forEach(linha => {
+                    if (y > 280) { doc.addPage(); y = 18; }
+                    doc.text(linha, 14, y);
+                    y += 5.5;
+                });
+                y += 2;
+            });
+
+            y += 4;
+            if (idx < selecionados.length - 1) {
+                if (y > 278) { doc.addPage(); y = 18; } else {
+                    doc.setDrawColor(220);
+                    doc.line(14, y - 2, 196, y - 2);
+                }
+            }
+        });
+
+        doc.save(nomeArquivoDevocional() + '.pdf');
+    };
+
+    window.exportarDevocionalWord = function () {
+        const selecionados = obterDevocionaisSelecionados();
+        if (selecionados.length === 0) { alert('Selecione ao menos um devocional para exportar (ou use "Selecionar todos").'); return; }
+
+        const blocosHtml = selecionados.map(d => {
+            const dataObj = new Date(d.data + 'T00:00:00');
+            const diaSemana = DIAS_SEMANA[dataObj.getDay()];
+            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+            return `
+        <h3 style="color:#805ad5;">${escapeHtml(diaSemana)}, ${dataFormatada}</h3>
+        ${d.versiculo ? `<p><strong>Versículo:</strong> ${nl2br(d.versiculo)}</p>` : ''}
+        ${d.palavra ? `<p><strong>O que Deus falou:</strong> ${nl2br(d.palavra)}</p>` : ''}
+        ${d.profecia ? `<p><strong>Profecia:</strong> ${nl2br(d.profecia)}</p>` : ''}
+        <hr>`;
+        }).join('');
+
+        const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Devocionais</title></head>
+<body>
+    <h2>Devocionais</h2>
+    ${blocosHtml}
+</body>
+</html>`;
+        const blob = new Blob(['﻿', html], { type: 'application/msword' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = nomeArquivoDevocional() + '.doc';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     };
 
     // ---------------------------------------------------------------
@@ -1202,7 +1318,7 @@
         const observacaoDigitada = document.getElementById('observacao').value.trim();
 
         if (!categoriaDigitada) {
-            alert("Selecione ou cadastre uma categoria antes de salvar.");
+           alert("Selecione ou cadastre uma categoria antes de salvar.");
             return;
         }
 
@@ -1422,7 +1538,7 @@
                     { label: 'Saídas', data: saidas, backgroundColor: '#e74c3c' }
                 ]
             },
-            options: {
+           options: {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
