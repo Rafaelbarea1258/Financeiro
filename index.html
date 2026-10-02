@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Financeiro Casa</title>
+<title>Casa</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
@@ -59,7 +59,8 @@
     .content { padding: 30px; max-width: 100%; overflow-x: hidden; }
     .card { background: white; border-radius: 8px; padding: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 25px; max-width: 100%; }
     label { display: block; font-size: 0.85rem; font-weight: 600; color: #4a5568; margin-bottom: 6px; }
-    input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; margin-bottom: 15px; font-size: 1rem; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; margin-bottom: 15px; font-size: 1rem; font-family: inherit; }
+    textarea { resize: vertical; }
     .btn-primary { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; width: 100%; }
     .btn-primary:hover:not(:disabled) { background: #219653; }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
@@ -103,7 +104,7 @@
 
         /* Filtro do mês empilhado */
         .filtro-mes-container { flex-direction: column; align-items: stretch; }
-        .filtro-mes-container select { max-width: 100%; }
+        .filtro-mes-container select{ max-width: 100%; }
 
         /* Metas e Tarefas: select empilha abaixo do título quando não cabe ao lado */
         #lista-metas > div select { width: 100% !important; margin-top: 6px; }
@@ -172,7 +173,7 @@
 <!-- TELA DE LOGIN OBRIGATÓRIA -->
 <div id="login-screen">
     <div class="login-card">
-        <h2>Financeiro Casa</h2>
+        <h2>Casa</h2>
         <div id="login-status" class="login-status">Conectando…</div>
         <div id="login-erro" class="error-msg"></div>
         <button type="button" class="btn-retry" id="btn-retry" onclick="iniciarApp()">Tentar novamente</button>
@@ -191,10 +192,11 @@
 <!-- APLICAÇÃO PRINCIPAL -->
 <div id="app-screen" class="hidden">
     <div class="sidebar">
-        <div class="sidebar-brand">Financeiro Casa</div>
+        <div class="sidebar-brand">Casa</div>
         <ul class="sidebar-menu">
             <li><a class="active" onclick="mudarAba('lancamentos', this)">Lançamentos</a></li>
             <li><a onclick="mudarAba('graficos', this)">Gráficos &amp; Equilíbrio</a></li>
+            <li><a onclick="mudarAba('devocional', this)">Devocional</a></li>
             <li><a onclick="mudarAba('simulacao', this)">Simulador de Compra</a></li>
             <li><a onclick="mudarAba('categorias', this)">Gerenciar Categorias</a></li>
             <li><a onclick="mudarAba('usuarios', this)">Gerenciar Usuários</a></li>
@@ -294,10 +296,9 @@
 
                             <label>Categoria / Plano de Contas</label>
                             <input type="text" id="categoria-input" list="lista-categorias" placeholder="Digite para buscar (ex: mercado, energia...)" autocomplete="off" required>
-                            <datalist id="lista-categorias"></datalist>
-
-                            <div id="bloco-parcelas">
-                                <label>Quantidade de Parcelas / Meses</label>                                <select id="qtd-parcelas">
+                            <datalist id="lista-categorias"></datalist> <div id="bloco-parcelas">
+                                <label>Quantidade de Parcelas / Meses</label>
+                                <select id="qtd-parcelas">
                                     <option value="1">1 mês (À vista)</option>
                                     <option value="2">2 meses</option>
                                     <option value="3">3 meses</option>
@@ -417,6 +418,37 @@
                 </div>
             </div>
 
+            <!-- ABA DEVOCIONAL -->
+            <div id="tab-devocional" class="tab-content">
+                <div class="card" style="border-left: 4px solid #805ad5;">
+                    <h3>🙏 Novo Devocional</h3>
+                    <form onsubmit="cadastrarDevocional(event)">
+                        <label>Dia / Data</label>
+                        <input type="date" id="devocional-data" required>
+
+                        <label>Versículo</label>
+                        <textarea id="devocional-versiculo" rows="2" placeholder="Ex: João 3:16..."></textarea>
+
+                        <label>O que Deus falou</label>
+                        <textarea id="devocional-palavra" rows="3" placeholder="O que Deus falou com você nesse dia..."></textarea>
+
+                        <label>Profecia (opcional)</label>
+                        <textarea id="devocional-profecia" rows="3" placeholder="O que Deus falou por meio de profecia..."></textarea>
+
+                        <button type="submit" class="btn-primary">Salvar Devocional</button>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h3>📖 Histórico de Devocionais</h3>
+                    <div class="filtro-mes-container">
+                        <label for="filtro-mes-devocional" style="margin-bottom:0; font-weight:bold;">Mês:</label>
+                        <select id="filtro-mes-devocional" onchange="atualizarListaDevocionais()"></select>
+                    </div>
+                    <div id="lista-devocionais"></div>
+                </div>
+            </div>
+
             <!-- ABA SIMULADOR DE COMPRA -->
             <div id="tab-simulacao" class="tab-content">
                 <div class="card">
@@ -469,7 +501,8 @@
                         <input type="text" id="nova-cat-nome" placeholder="Ex: Mercado, Luz, Aluguel..." required>
 
                         <button type="submit" class="btn-primary">Adicionar Categoria</button>
-                    </form>    </div>
+                    </form>
+                </div>
 
                 <div class="card">
                     <h3>Categorias Cadastradas</h3>
@@ -531,6 +564,7 @@
     let usuariosCadastrados = [];
     let metasCadastradas = [];
     let tarefasCadastradas = [];
+    let devocionaisCadastrados = [];
     let meuGrafico = null;
     let graficoCategorias = null;
     let graficoSemestral = null;
@@ -572,6 +606,7 @@
     gerarOpcoesMes('filtro-mes');
     gerarOpcoesMes('filtro-mes-grafico');
     gerarOpcoesMes('filtro-mes-tarefas');
+    gerarOpcoesMes('filtro-mes-devocional');
 
     function setSyncBadge(texto, classe) {
         const badge = document.getElementById('sync-badge');
@@ -616,7 +651,8 @@
                 carregarContasPendentes(),
                 carregarLancamentos(),
                 carregarMetas(),
-                carregarTarefas()
+                carregarTarefas(),
+                carregarDevocionais()
             ]);
 
             configurarRealtime();
@@ -638,7 +674,9 @@
             ['categorias', carregarCategorias],
             ['contas_pendentes', carregarContasPendentes],
             ['lancamentos', carregarLancamentos],
-            ['metas', carregarMetas],   ['tarefas_casa', carregarTarefas]
+            ['metas', carregarMetas],
+            ['tarefas_casa', carregarTarefas],
+            ['devocionais', carregarDevocionais]
         ];
         tabelas.forEach(([tabela, recarregar]) => {
             const canal = supabase
@@ -692,6 +730,13 @@
         tarefasCadastradas = data || [];
         atualizarListaTarefas();
         atualizarRelatorioTarefas();
+    }
+
+    async function carregarDevocionais() {
+        const { data, error } = await supabase.from('devocionais').select('*').order('data', { ascending: false });
+        if (error) throw error;
+        devocionaisCadastrados = data || [];
+        atualizarListaDevocionais();
     }
 
     async function carregarLancamentos() {
@@ -1024,8 +1069,82 @@
             const dataFormatada = new Date(tarefa.concluida_em).toLocaleDateString('pt-BR');
             linha.innerHTML = `
                 <td>${escapeHtml(tarefa.descricao)}</td>
-                <td>${dataFormatada}</td>         `;
+                <td>${dataFormatada}</td>
+            `;
             corpo.appendChild(linha);
+        });
+    };
+
+    // ---------------------------------------------------------------
+    // Devocional
+    // ---------------------------------------------------------------
+    const DIAS_SEMANA = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+    function nl2br(texto) {
+        return escapeHtml(texto).replace(/\n/g, '<br>');
+    }
+
+    window.cadastrarDevocional = async function (event) {
+        event.preventDefault();
+        const data = document.getElementById('devocional-data').value;
+        const versiculo = document.getElementById('devocional-versiculo').value.trim();
+        const palavra = document.getElementById('devocional-palavra').value.trim();
+        const profecia = document.getElementById('devocional-profecia').value.trim();
+        if (!data) return;
+
+        const { error } = await supabase.from('devocionais').insert({
+            data,
+            versiculo: versiculo || null,
+            palavra: palavra || null,
+            profecia: profecia || null
+        });
+        if (error) { alert("Não foi possível salvar o devocional agora. Tente novamente."); return; }
+        await carregarDevocionais();
+        event.target.reset();
+        alert("Devocional salvo com sucesso!");
+    };
+
+    window.excluirDevocional = async function (id) {
+        if (!confirm("Deseja realmente excluir este devocional?")) return;
+        const { error } = await supabase.from('devocionais').delete().eq('id', id);
+        if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
+        await carregarDevocionais();
+    };
+
+    window.atualizarListaDevocionais = function () {
+        const container = document.getElementById('lista-devocionais');
+        const selectMes = document.getElementById('filtro-mes-devocional');
+        if (!container || !selectMes) return;
+
+        const mesFiltro = selectMes.value;
+        const filtrados = devocionaisCadastrados
+            .filter(d => d.data && d.data.startsWith(mesFiltro))
+            .slice()
+            .sort((a, b) => new Date(b.data) - new Date(a.data));
+
+        container.innerHTML = '';
+        if (filtrados.length === 0) {
+            container.innerHTML = '<p class="empty-msg">Nenhum devocional registrado neste mês.</p>';
+            return;
+        }
+
+        filtrados.forEach(d => {
+            const dataObj = new Date(d.data + 'T00:00:00');
+            const diaSemana = DIAS_SEMANA[dataObj.getDay()];
+            const dataFormatada = dataObj.toLocaleDateString('pt-BR');
+
+            const bloco = document.createElement('div');
+            bloco.style.cssText = 'padding:15px 0; border-bottom:1px solid #edf2f7;';
+            bloco.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px; flex-wrap:wrap;">
+                    <strong style="color:#805ad5;">${diaSemana}, ${dataFormatada}</strong>
+                    <button class="btn-acao" onclick="excluirDevocional('${d.id}')" title="Excluir">🗑️</button>
+                </div>
+                ${d.versiculo ? `<p style="margin-top:8px;"><strong>Versículo:</strong> ${nl2br(d.versiculo)}</p>` : ''}
+                ${d.palavra ? `<p style="margin-top:8px;"><strong>O que Deus falou:</strong> ${nl2br(d.palavra)}</p>` : ''}
+                ${d.profecia ? `<p style="margin-top:8px;"><strong>Profecia:</strong> ${nl2br(d.profecia)}</p>` : ''}
+            `;
+            container.appendChild(bloco);
         });
     };
 
@@ -1352,7 +1471,7 @@
 
         const saidasDoMes = lancamentos.filter(item => {
             if (item.tipo !== 'Saída') return false;
-            return mesFiltro === 'all' || item.data.startsWith(mesFiltro);
+       return mesFiltro === 'all' || item.data.startsWith(mesFiltro);
         });
 
         const totais = {};
