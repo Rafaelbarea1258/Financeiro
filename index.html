@@ -362,7 +362,18 @@
 
                 <div class="card">
                     <h3>📊 Relatório Mensal por Categoria (Saídas)</h3>
-                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Veja em quais categorias você mais gastou no mês selecionado acima, e exporte esse relatório.</p>
+                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Veja em quais categorias você mais gastou, por mês, agrupando por período, ou somando todos os lançamentos (útil para empréstimos e parcelamentos longos).</p>
+                    <div class="filtro-mes-container">
+                        <label for="filtro-periodo-categorias" style="margin-bottom:0; font-weight:bold;">Agrupar por:</label>
+                        <select id="filtro-periodo-categorias" onchange="atualizarRelatorioCategorias()">
+                            <option value="1" selected>Mês selecionado acima</option>
+                            <option value="3">3 meses (até o mês acima)</option>
+                            <option value="6">6 meses (até o mês acima)</option>
+                            <option value="12">12 meses (até o mês acima)</option>
+                            <option value="24">24 meses (até o mês acima)</option>
+                            <option value="all">Todos os Lançamentos</option>
+                        </select>
+                    </div>
                     <div class="grafico-wrap" style="width: 100%; max-width: 600px; margin: 0 auto 20px;">
                         <canvas id="graficoCategorias"></canvas>
                     </div>
@@ -437,6 +448,29 @@
 
                         <button type="submit" class="btn-primary">Salvar Devocional</button>
                     </form>
+                </div>
+
+                <div class="card">
+                    <h3>📈 Devocionais Realizados por Período</h3>
+                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Veja a quantidade de dias em que você fez o devocional, agrupando por período, ou somando todos os anos.</p>
+                    <div class="filtro-mes-container">
+                        <label for="filtro-periodo-devocionais" style="margin-bottom:0; font-weight:bold;">Agrupar a cada:</label>
+                        <select id="filtro-periodo-devocionais" onchange="atualizarGraficoDevocionais()">
+                            <option value="1">1 mês</option>
+                            <option value="2">2 meses</option>
+                            <option value="3">3 meses</option>
+                            <option value="4">4 meses</option>
+                            <option value="6" selected>6 meses</option>
+                            <option value="9">9 meses</option>
+                            <option value="12">12 meses</option>
+                            <option value="18">18 meses</option>
+                            <option value="24">24 meses</option>
+                            <option value="all">Todos (por ano)</option>
+                        </select>
+                    </div>
+                    <div class="grafico-wrap" style="width: 100%; max-width: 700px; margin: 0 auto; height: 240px;">
+                        <canvas id="graficoDevocionais"></canvas>
+                    </div>
                 </div>
 
                 <div class="card">
@@ -579,6 +613,7 @@
     let graficoCategorias = null;
     let graficoSemestral = null;
     let graficoAnual = null;
+    let graficoDevocionais = null;
     let canaisRealtime = [];
 
     function escapeHtml(str) {
@@ -747,6 +782,9 @@
         if (error) throw error;
         devocionaisCadastrados = data || [];
         atualizarListaDevocionais();
+        if (document.getElementById('tab-devocional').classList.contains('active')) {
+            atualizarGraficoDevocionais();
+        }
     }
 
     async function carregarLancamentos() {
@@ -856,6 +894,7 @@
         document.getElementById(`tab-${abaId}`).classList.add('active');
         elemento.classList.add('active');
         if (abaId === 'graficos') atualizarGraficoEEquilibrio();
+        if (abaId === 'devocional') atualizarGraficoDevocionais();
     };
 
     window.mudarMesOrcamento = function () {
@@ -1578,17 +1617,111 @@
     };
 
     // ---------------------------------------------------------------
+    // Devocionais realizados por período (contagem)
+    // ---------------------------------------------------------------
+    function agregarDevocionaisPorPeriodo(qtdMeses) {
+        const mapa = {};
+        devocionaisCadastrados.forEach(item => {
+            if (!item.data) return;
+            const [anoStr, mesStr] = item.data.split('-');
+            const totalMeses = parseInt(anoStr, 10) * 12 + (parseInt(mesStr, 10) - 1);
+            const grupo = Math.floor(totalMeses / qtdMeses);
+            if (!mapa[grupo]) mapa[grupo] = { quantidade: 0, inicioMeses: grupo * qtdMeses };
+            mapa[grupo].quantidade += 1;
+        });
+        return mapa;
+    }
+
+    function renderizarGraficoContagem(canvasId, labels, valores, graficoAtual, labelSerie, cor) {
+        const canvasEl = document.getElementById(canvasId);
+        if (!canvasEl) return null;
+        if (graficoAtual) graficoAtual.destroy();
+        canvasEl.parentElement.style.height = Math.max(220, labels.length * 40) + 'px';
+        if (labels.length === 0) return null;
+        const ctx = canvasEl.getContext('2d');
+        return new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{ label: labelSerie, data: valores, backgroundColor: cor || '#805ad5' }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+    window.atualizarGraficoDevocionais = function () {
+        const selectPeriodo = document.getElementById('filtro-periodo-devocionais');
+        const valor = selectPeriodo ? selectPeriodo.value : '6';
+
+        let labels, valores;
+        if (valor === 'all') {
+            // "Todos": agrupa por ano
+            const mapaAno = {};
+            devocionaisCadastrados.forEach(item => {
+                if (!item.data) return;
+                const ano = item.data.split('-')[0];
+                mapaAno[ano] = (mapaAno[ano] || 0) + 1;
+            });
+            const chavesAno = Object.keys(mapaAno).sort();
+            labels = chavesAno;
+            valores = chavesAno.map(c => mapaAno[c]);
+        } else {
+            const qtdMeses = parseInt(valor, 10) || 6;
+            const mapaPeriodo = agregarDevocionaisPorPeriodo(qtdMeses);
+            const gruposOrdenados = Object.keys(mapaPeriodo).map(Number).sort((a, b) => a - b);
+            labels = gruposOrdenados.map(g => rotuloPeriodo(mapaPeriodo[g].inicioMeses, qtdMeses));
+            valores = gruposOrdenados.map(g => mapaPeriodo[g].quantidade);
+        }
+
+        graficoDevocionais = renderizarGraficoContagem('graficoDevocionais', labels, valores, graficoDevocionais, 'Devocionais Realizados', '#805ad5');
+    };
+
+    // ---------------------------------------------------------------
     // Relatório mensal por categoria (com exportação)
     // ---------------------------------------------------------------
     function obterDadosRelatorioCategorias() {
         const selectMes = document.getElementById('filtro-mes-grafico');
         const mesFiltro = selectMes.value;
-        const mesLabel = (selectMes.selectedOptions && selectMes.selectedOptions[0]) ? selectMes.selectedOptions[0].textContent : mesFiltro;
+        const mesLabelMes = (selectMes.selectedOptions && selectMes.selectedOptions[0]) ? selectMes.selectedOptions[0].textContent : mesFiltro;
 
-        const saidasDoMes = lancamentos.filter(item => {
-            if (item.tipo !== 'Saída') return false;
-       return mesFiltro === 'all' || item.data.startsWith(mesFiltro);
-        });
+        const selectPeriodo = document.getElementById('filtro-periodo-categorias');
+        const periodoValor = selectPeriodo ? selectPeriodo.value : '1';
+
+        let saidasDoMes;
+        let mesLabel;
+
+        if (periodoValor === 'all') {
+            // Todos os lançamentos, sem filtro de mês/período (útil para empréstimos e parcelamentos longos)
+            saidasDoMes = lancamentos.filter(item => item.tipo === 'Saída');
+            mesLabel = 'Todos os Lançamentos';
+        } else {
+            const qtdMeses = parseInt(periodoValor, 10) || 1;
+            if (qtdMeses <= 1 || mesFiltro === 'all') {
+                saidasDoMes = lancamentos.filter(item => {
+                    if (item.tipo !== 'Saída') return false;
+                    return mesFiltro === 'all' || item.data.startsWith(mesFiltro);
+                });
+                mesLabel = mesFiltro === 'all' ? 'Todos os Lançamentos' : mesLabelMes;
+            } else {
+                // Janela de "qtdMeses" meses terminando no mês selecionado acima
+                const [anoStr, mesStr] = mesFiltro.split('-');
+                const mesesFim = parseInt(anoStr, 10) * 12 + (parseInt(mesStr, 10) - 1);
+                const mesesIni = mesesFim - qtdMeses + 1;
+                saidasDoMes = lancamentos.filter(item => {
+                    if (item.tipo !== 'Saída') return false;
+                    const [anoItem, mesItem] = item.data.split('-');
+                    const totalMesesItem = parseInt(anoItem, 10) * 12 + (parseInt(mesItem, 10) - 1);
+                    return totalMesesItem >= mesesIni && totalMesesItem <= mesesFim;
+                });
+                mesLabel = rotuloPeriodo(mesesIni, qtdMeses);
+            }
+        }
 
         const totais = {};
         saidasDoMes.forEach(item => {
@@ -1618,7 +1751,7 @@
 
         tabelaEl.innerHTML = '';
         if (linhas.length === 0) {
-            tabelaEl.innerHTML = `<tr><td colspan="3" class="empty-msg">Nenhuma saída registrada neste mês.</td></tr>`;
+            tabelaEl.innerHTML = `<tr><td colspan="3" class="empty-msg">Nenhuma saída registrada neste período.</td></tr>`;
         } else {
             linhas.forEach(l => {
                 const linha = document.createElement('tr');
@@ -1656,6 +1789,7 @@
             }
         });
     }
+    window.atualizarRelatorioCategorias = atualizarRelatorioCategorias;
 
     function nomeArquivoRelatorio(mesLabel) {
         return 'relatorio-categorias-' + mesLabel.replace(/[^a-zA-Z0-9]+/g, '-');
@@ -1663,7 +1797,7 @@
 
     window.exportarRelatorioExcel = function () {
         const { linhas, mesLabel, totalGeral } = obterDadosRelatorioCategorias();
-        if (totalGeral === 0) { alert('Não há saídas registradas neste mês para exportar.'); return; }
+        if (totalGeral === 0) { alert('Não há saídas registradas neste período para exportar.'); return; }
         if (!window.XLSX) { alert('A biblioteca de exportação ainda não carregou. Tente novamente em instantes.'); return; }
 
         const dados = [['Categoria', 'Total Gasto (R$)', '% do Total']];
@@ -1677,7 +1811,7 @@
 
     window.exportarRelatorioPDF = function () {
         const { linhas, mesLabel, totalGeral } = obterDadosRelatorioCategorias();
-        if (totalGeral === 0) { alert('Não há saídas registradas neste mês para exportar.'); return; }
+        if (totalGeral === 0) { alert('Não há saídas registradas neste período para exportar.'); return; }
         if (!window.jspdf) { alert('A biblioteca de exportação ainda não carregou. Tente novamente em instantes.'); return; }
 
         const { jsPDF } = window.jspdf;
@@ -1685,7 +1819,7 @@
         doc.setFontSize(14);
         doc.text('Relatório Mensal por Categoria', 14, 16);
         doc.setFontSize(10);
-        doc.text(`Mês: ${mesLabel}  |  Total de Saídas: R$ ${totalGeral.toFixed(2)}`, 14, 23);
+        doc.text(`Período: ${mesLabel}  |  Total de Saídas: R$ ${totalGeral.toFixed(2)}`, 14, 23);
         doc.autoTable({
             head: [['Categoria', 'Total Gasto', '% do Total']],
             body: linhas.map(l => [l.categoria, `R$ ${l.total.toFixed(2)}`, `${l.percentual.toFixed(1)}%`]),
@@ -1696,7 +1830,7 @@
 
     window.exportarRelatorioWord = function () {
         const { linhas, mesLabel, totalGeral } = obterDadosRelatorioCategorias();
-        if (totalGeral === 0) { alert('Não há saídas registradas neste mês para exportar.'); return; }
+        if (totalGeral === 0) { alert('Não há saídas registradas neste período para exportar.'); return; }
 
         const linhasHtml = linhas.map(l => `<tr><td>${escapeHtml(l.categoria)}</td><td>R$ ${l.total.toFixed(2)}</td><td>${l.percentual.toFixed(1)}%</td></tr>`).join('');
         const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
