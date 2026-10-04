@@ -418,6 +418,11 @@
                     <div class="grafico-wrap" style="width: 100%; max-width: 700px; margin: 0 auto; height: 240px;">
                         <canvas id="graficoSemestral"></canvas>
                     </div>
+                    <h3 style="margin-top:25px;">🧾 Saídas por Categoria em cada Período</h3>
+                    <p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Dentro de cada período acima, veja quanto foi gasto em cada categoria (ex: Empréstimo, Mercado...), empilhado por período.</p>
+                    <div class="grafico-wrap" style="width: 100%; max-width: 760px; margin: 0 auto; height: 360px;">
+                        <canvas id="graficoCategoriasPeriodo"></canvas>
+                    </div>
                 </div>
 
                 <div class="card">
@@ -612,6 +617,7 @@
     let meuGrafico = null;
     let graficoCategorias = null;
     let graficoSemestral = null;
+    let graficoCategoriasPeriodo = null;
     let graficoAnual = null;
     let graficoDevocionais = null;
     let canaisRealtime = [];
@@ -1587,6 +1593,70 @@
         });
     }
 
+    // Agrupa as Saídas em blocos de "qtdMeses" meses (mesmo agrupamento do
+    // gráfico Entradas vs Saídas acima), somando por categoria dentro de
+    // cada período — para mostrar, por período, quanto foi de cada categoria
+    // (ex: Empréstimo, Mercado...).
+    function agregarCategoriasPorPeriodo(qtdMeses) {
+        const mapa = {};
+        const categoriasSet = new Set();
+        lancamentos.forEach(item => {
+            if (item.tipo !== 'Saída') return;
+            const [anoStr, mesStr] = item.data.split('-');
+            const totalMeses = parseInt(anoStr, 10) * 12 + (parseInt(mesStr, 10) - 1);
+            const grupo = Math.floor(totalMeses / qtdMeses);
+            const nomeBase = item.categoria.split(' (')[0];
+            categoriasSet.add(nomeBase);
+            if (!mapa[grupo]) mapa[grupo] = { inicioMeses: grupo * qtdMeses, categorias: {} };
+            mapa[grupo].categorias[nomeBase] = (mapa[grupo].categorias[nomeBase] || 0) + parseFloat(item.valor);
+        });
+        return { mapa, categorias: Array.from(categoriasSet) };
+    }
+
+    function renderizarGraficoCategoriasPeriodo(qtdMeses) {
+        const canvasEl = document.getElementById('graficoCategoriasPeriodo');
+        if (!canvasEl) return null;
+        if (graficoCategoriasPeriodo) graficoCategoriasPeriodo.destroy();
+
+        const { mapa, categorias } = agregarCategoriasPorPeriodo(qtdMeses);
+        const gruposOrdenados = Object.keys(mapa).map(Number).sort((a, b) => a - b);
+        canvasEl.parentElement.style.height = '360px';
+        if (gruposOrdenados.length === 0 || categorias.length === 0) return null;
+
+        const labels = gruposOrdenados.map(g => rotuloPeriodo(mapa[g].inicioMeses, qtdMeses));
+
+        // Ordena as categorias pelo total geral (maior primeiro), para a
+        // legenda e as cores ficarem estáveis e as maiores aparecerem primeiro.
+        const totalPorCategoria = {};
+        categorias.forEach(c => { totalPorCategoria[c] = 0; });
+        gruposOrdenados.forEach(g => {
+            const cats = mapa[g].categorias;
+            Object.keys(cats).forEach(c => { totalPorCategoria[c] += cats[c]; });
+        });
+        const categoriasOrdenadas = categorias.slice().sort((a, b) => totalPorCategoria[b] - totalPorCategoria[a]);
+
+        const datasets = categoriasOrdenadas.map((cat, i) => ({
+            label: cat,
+            data: gruposOrdenados.map(g => mapa[g].categorias[cat] || 0),
+            backgroundColor: `hsl(${(i * 47) % 360}, 65%, 55%)`
+        }));
+
+        const ctx = canvasEl.getContext('2d');
+        return new Chart(ctx, {
+            type: 'bar',
+            data: { labels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'bottom' } },
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true, beginAtZero: true }
+                }
+            }
+        });
+    }
+
     window.atualizarGraficosPeriodo = function () {
         // Período configurável: agrupa de "qtdMeses" em "qtdMeses" meses,
         // conforme escolhido no seletor "Agrupar a cada".
@@ -1603,6 +1673,9 @@
             gruposOrdenados.map(g => mapaPeriodo[g].saidas),
             graficoSemestral
         );
+
+        // Saídas por categoria, empilhadas dentro de cada período (mesmo agrupamento acima)
+        graficoCategoriasPeriodo = renderizarGraficoCategoriasPeriodo(qtdMeses);
 
         // Anual: agrupa por ano
         const mapaAno = agregarLancamentosPorChave(data => data.split('-')[0]);
