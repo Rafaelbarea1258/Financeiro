@@ -198,7 +198,7 @@
             <li><a onclick="mudarAba('graficos', this)">Gráficos &amp; Equilíbrio</a></li>
             <li><a onclick="mudarAba('devocional', this)">Devocional</a></li>
             <li><a onclick="mudarAba('simulacao', this)">Simulador de Compra</a></li>
-            <li><a onclick="mudarAba('categorias', this)">Gerenciar Categorias</a></li>
+            <li><a onclick="mudarAba('listacompras', this)">Lista de Compras</a></li><li><a onclick="mudarAba('categorias', this)">Gerenciar Categorias</a></li>
             <li><a onclick="mudarAba('usuarios', this)">Gerenciar Usuários</a></li>
         </ul>
     </div>
@@ -535,7 +535,7 @@
                 </div>
             </div>
 
-            <!-- ABA GERENCIAR CATEGORIAS -->
+            <!-- ABA LISTA DE COMPRAS --><div id="tab-listacompras" class="tab-content"><div class="card" style="border-left: 4px solid #e07a3e;"><h3>🛒 Lista de Compras Mensal</h3><p style="color:#718096; font-size:0.85rem; margin-bottom:15px;">Ajuste a quantidade e o valor de cada item quando for às compras. O valor do mês anterior fica salvo para comparação. Itens extras que não estão na lista fixa também podem ser adicionados e entram no total.</p><div class="resumo-box"><strong>Total Gasto na Lista:</strong><span id="total-lista-compras" class="text-blue">R$ 0,00</span></div><form onsubmit="adicionarItemListaCompras(event)" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-bottom:15px;"><div style="flex:2; min-width:160px;"><label>Item</label><input type="text" id="novo-item-nome" placeholder="Ex: Chocolate, Pão..." required style="margin-bottom:0;"></div><div style="flex:1; min-width:120px;"><label>Quantidade</label><input type="text" id="novo-item-quantidade" placeholder="Ex: 2 kg" style="margin-bottom:0;"></div><div style="flex:1; min-width:120px;"><label>Valor (R$)</label><input type="number" step="0.01" id="novo-item-valor" placeholder="0.00" style="margin-bottom:0;"></div><button type="submit" class="btn-primary" style="width:auto; padding:10px 20px; margin-bottom:0;">Adicionar Item</button></form><div class="table-scroll"><table><thead><tr><th>Item</th><th>Quantidade</th><th>Valor Anterior</th><th>Valor Atual</th><th>Ação</th></tr></thead><tbody id="tabela-lista-compras"></tbody></table></div><div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div></div></div><!-- ABA GERENCIAR CATEGORIAS -->
             <div id="tab-categorias" class="tab-content">
                 <div class="card">
                     <h3>🏷️ Cadastrar Nova Categoria</h3>
@@ -613,7 +613,7 @@
     let usuariosCadastrados = [];
     let metasCadastradas = [];
     let tarefasCadastradas = [];
-    let devocionaisCadastrados = [];
+    let devocionaisCadastrados = []; let listaCompras = [];
     let meuGrafico = null;
     let graficoCategorias = null;
     let graficoSemestral = null;
@@ -701,7 +701,7 @@
                 carregarCategorias(),
                 carregarContasPendentes(),
                 carregarLancamentos(),
-                carregarMetas(),
+                carregarMetas(), carregarListaCompras(),
                 carregarTarefas(),
                 carregarDevocionais()
             ]);
@@ -727,7 +727,7 @@
             ['lancamentos', carregarLancamentos],
             ['metas', carregarMetas],
             ['tarefas_casa', carregarTarefas],
-            ['devocionais', carregarDevocionais]
+            ['devocionais', carregarDevocionais], ['lista_compras', carregarListaCompras]
         ];
         tabelas.forEach(([tabela, recarregar]) => {
             const canal = supabase
@@ -806,7 +806,7 @@
     // ---------------------------------------------------------------
     // Login
     // ---------------------------------------------------------------
-    function preencherSelectUsuarios() {
+    async function carregarListaCompras() { const { data, error } = await supabase.from('lista_compras').select('*').order('ordem'); if (error) throw error; listaCompras = data || []; atualizarListaComprasUI(); } function atualizarListaComprasUI() { const corpo = document.getElementById('tabela-lista-compras'); const spanTotal = document.getElementById('total-lista-compras'); if (!corpo || !spanTotal) return; let total = 0; listaCompras.forEach(item => { total += parseFloat(item.valor) || 0; }); spanTotal.innerText = `R$ ${total.toFixed(2)}`; corpo.innerHTML = ''; if (listaCompras.length === 0) { corpo.innerHTML = `<tr><td colspan="5" class="empty-msg">Nenhum item na lista.</td></tr>`; return; } listaCompras.forEach(item => { const linha = document.createElement('tr'); linha.innerHTML = `<td>${escapeHtml(item.nome)}</td><td><input type="text" value="${escapeHtml(item.quantidade || '')}" style="margin-bottom:0; min-width:110px;" onchange="atualizarQuantidadeItemLista('${item.id}', this.value)"></td><td>${item.valor_anterior !== null && item.valor_anterior !== undefined ? 'R$ ' + parseFloat(item.valor_anterior).toFixed(2) : '—'}</td><td><input type="number" step="0.01" value="${item.valor !== null && item.valor !== undefined ? item.valor : ''}" placeholder="0.00" style="margin-bottom:0; min-width:100px;" onchange="atualizarValorItemLista('${item.id}', this.value)"></td><td><button class="btn-acao" onclick="excluirItemListaCompras('${item.id}')" title="Excluir">🗑️</button></td>`; corpo.appendChild(linha); }); } window.atualizarQuantidadeItemLista = async function (id, novaQuantidade) { const { error } = await supabase.from('lista_compras').update({ quantidade: novaQuantidade }).eq('id', id); if (error) { alert("Não foi possível atualizar a quantidade agora. Tente novamente."); return; } await carregarListaCompras(); }; window.atualizarValorItemLista = async function (id, novoValorTexto) { const item = listaCompras.find(i => i.id === id); if (!item) return; const novoValor = novoValorTexto === '' ? null : parseFloat(novoValorTexto); const hoje = new Date(); const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`; const atualizacao = {}; if (item.mes_valor !== mesAtual && item.valor !== null && item.valor !== undefined) { atualizacao.valor_anterior = item.valor; } atualizacao.valor = novoValor; atualizacao.mes_valor = novoValor === null ? item.mes_valor : mesAtual; const { error } = await supabase.from('lista_compras').update(atualizacao).eq('id', id); if (error) { alert("Não foi possível atualizar o valor agora. Tente novamente."); return; } await carregarListaCompras(); }; window.adicionarItemListaCompras = async function (event) { event.preventDefault(); const nome = document.getElementById('novo-item-nome').value.trim(); const quantidade = document.getElementById('novo-item-quantidade').value.trim(); const valorTexto = document.getElementById('novo-item-valor').value; if (!nome) return; const maiorOrdem = listaCompras.reduce((max, i) => Math.max(max, i.ordem || 0), 0); const hoje = new Date(); const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}`; const valor = valorTexto === '' ? null : parseFloat(valorTexto); const { error } = await supabase.from('lista_compras').insert({ nome, quantidade: quantidade || null, valor, valor_anterior: null, mes_valor: valor === null ? null : mesAtual, ordem: maiorOrdem + 1 }); if (error) { alert("Não foi possível adicionar o item agora. Tente novamente."); return; } await carregarListaCompras(); event.target.reset(); }; window.excluirItemListaCompras = async function (id) { if (!confirm("Deseja realmente excluir este item da lista?")) return; const { error } = await supabase.from('lista_compras').delete().eq('id', id); if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; } await carregarListaCompras(); }; function preencherSelectUsuarios() {
         const select = document.getElementById('login-usuario');
         const valorAtual = select.value;
         select.innerHTML = '';
