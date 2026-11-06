@@ -1374,7 +1374,7 @@
                     <td>${escapeHtml(conta.descricao)}</td>
                     <td>${escapeHtml(conta.observacao || '')}</td>
                     <td><input type="number" step="0.01" id="valor-conta-${conta.id}" value="${conta.valor}" style="margin-bottom:0; min-width:90px;"></td>
-                    <td><button class="btn-pagar" onclick="marcarComoPago('${conta.id}', '${conta.origem}')">Pago ✓</button></td>
+                    <td><button class="btn-pagar" onclick="marcarComoPago('${conta.id}', '${conta.origem}')">Pago ✓</button> <button class="btn-acao" onclick="conta.origem === 'lancamento' ? excluirLancamento('${conta.id}') : excluirContaPendente('${conta.id}')" title="Excluir">🗑️</button></td>
                 `;
                 corpo.appendChild(linha);
             });
@@ -1416,6 +1416,13 @@
         const { error } = await supabase.from('contas_pendentes').insert({ descricao, valor, vencimento });
         if (error) { alert("Não foi possível adicionar a conta agora. Tente novamente."); return; }
         event.target.reset();
+        await carregarContasPendentes();
+    };
+
+    window.excluirContaPendente = async function (id) {
+        if (!confirm('Deseja realmente excluir esta conta?')) return;
+        const { error } = await supabase.from('contas_pendentes').delete().eq('id', id);
+        if (error) { alert("Não foi possível excluir agora. Tente novamente."); return; }
         await carregarContasPendentes();
     };
 
