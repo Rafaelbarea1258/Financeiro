@@ -1722,13 +1722,12 @@
 
         const { mapa, categorias } = agregarCategoriasPorPeriodo(qtdMeses);
         const gruposOrdenados = Object.keys(mapa).map(Number).sort((a, b) => a - b);
-        canvasEl.parentElement.style.height = '360px';
-        if (gruposOrdenados.length === 0 || categorias.length === 0) return null;
+        if (gruposOrdenados.length === 0 || categorias.length === 0) {
+            canvasEl.parentElement.style.height = '360px';
+            return null;
+        }
 
-        const labels = gruposOrdenados.map(g => rotuloPeriodo(mapa[g].inicioMeses, qtdMeses));
-
-        // Ordena as categorias pelo total geral (maior primeiro), para a
-        // legenda e as cores ficarem estáveis e as maiores aparecerem primeiro.
+        // Soma o total de cada categoria em todos os períodos selecionados.
         const totalPorCategoria = {};
         categorias.forEach(c => { totalPorCategoria[c] = 0; });
         gruposOrdenados.forEach(g => {
@@ -1737,24 +1736,26 @@
         });
         const categoriasOrdenadas = categorias.slice().sort((a, b) => totalPorCategoria[b] - totalPorCategoria[a]);
 
-        const datasets = categoriasOrdenadas.map((cat, i) => ({
-            label: cat,
-            data: gruposOrdenados.map(g => mapa[g].categorias[cat] || 0),
-            backgroundColor: `hsl(${(i * 47) % 360}, 65%, 55%)`
-        }));
+        canvasEl.parentElement.style.height = Math.max(220, categoriasOrdenadas.length * 34) + 'px';
 
         const ctx = canvasEl.getContext('2d');
         return new Chart(ctx, {
             type: 'bar',
-            data: { labels, datasets },
+            data: {
+                labels: categoriasOrdenadas,
+                datasets: [{
+                    label: 'Total Gasto (R$)',
+                    data: categoriasOrdenadas.map(c => totalPorCategoria[c]),
+                    backgroundColor: categoriasOrdenadas.map((_, i) => `hsl(${(i * 47) % 360}, 65%, 55%)`),
+                    borderWidth: 1
+                }]
+            },
             options: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: true, position: 'bottom' } },
-                scales: {
-                    x: { stacked: true },
-                    y: { stacked: true, beginAtZero: true }
-                }
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }
             }
         });
     }
