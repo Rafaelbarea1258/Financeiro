@@ -273,6 +273,17 @@
                     </table>
                     </div>
                     <div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div>
+                    <div style="margin-top:16px;">
+                        <h4 style="color:#38a169; font-size:0.95rem; margin-bottom:8px;">✅ Pagas este mês</h4>
+                        <div class="table-scroll">
+                        <table>
+                            <thead>
+                            <tr><th>Vencimento</th><th>Conta / Descrição</th><th>Valor Pago</th><th>Ação</th></tr>
+                            </thead>
+                            <tbody id="tabela-contas-pagas"></tbody>
+                        </table>
+                        </div>
+                    </div>
                     <form onsubmit="adicionarContaPendente(event)" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:15px;"><div style="flex:2; min-width:160px;"><label>Conta / Descrição</label><input type="text" id="nova-conta-descricao" placeholder="Ex: Aluguel, Luz..." required style="margin-bottom:0;"></div><div style="flex:1; min-width:120px;"><label>Valor (R$)</label><input type="number" step="0.01" id="nova-conta-valor" placeholder="0.00" required style="margin-bottom:0;"></div><div style="flex:1; min-width:140px;"><label>Vencimento</label><input type="date" id="nova-conta-vencimento" required style="margin-bottom:0;"></div><button type="submit" class="btn-primary" style="width:auto; padding:10px 20px; margin-bottom:0;">Adicionar Conta</button></form>
                 </div>
 
@@ -1328,12 +1339,15 @@
         const daqui15Dias = new Date();
         daqui15Dias.setDate(hoje.getDate() + 15);
         const hojeISO = hoje.toISOString().split('T')[0];
+        const mesAtual = hojeISO.slice(0, 7);
+
+        const valorPagoOuOriginal = (item) => (item.valor_pago !== null && item.valor_pago !== undefined) ? item.valor_pago : item.valor;
 
         const spanTotalPago = document.getElementById('total-pago-contas');
         if (spanTotalPago) {
-            const mesAtual = hojeISO.slice(0, 7);
-            const totalPago = contasPendentes.filter(c => c.pago && c.pago_em && c.pago_em.slice(0, 7) === mesAtual).reduce((s, c) => s + (parseFloat(c.valor) || 0), 0);
-            spanTotalPago.innerText = `R$ ${totalPago.toFixed(2)}`;
+            const totalManual = contasPendentes.filter(c => c.pago && c.pago_em && c.pago_em.slice(0, 7) === mesAtual).reduce((s, c) => s + (parseFloat(valorPagoOuOriginal(c)) || 0), 0);
+            const totalLanc = lancamentos.filter(l => l.pago && l.pago_em && l.pago_em.slice(0, 7) === mesAtual).reduce((s, l) => s + (parseFloat(valorPagoOuOriginal(l)) || 0), 0);
+            spanTotalPago.innerText = `R$ ${(totalManual + totalLanc).toFixed(2)}`;
         }
 
         const contasManuais = contasPendentes.filter(conta => {
@@ -1343,7 +1357,7 @@
         }).map(conta => ({ id: conta.id, vencimento: conta.vencimento, descricao: conta.descricao, valor: conta.valor, origem: 'manual' }));
 
         const contasLancamentos = lancamentos.filter(l => {
-            if (l.tipo !== 'Saída') return false;
+            if (l.tipo !== 'Saída' || l.pago) return false;
             const dataVenc = new Date(l.data + 'T00:00:00');
             return dataVenc >= new Date(hojeISO + 'T00:00:00') && dataVenc <= daqui15Dias;
         }).map(l => ({ id: l.id, vencimento: l.data, descricao: l.categoria, valor: l.valor, origem: 'lancamento' }));
@@ -1352,22 +1366,42 @@
 
         if (filtradas.length === 0) {
             corpo.innerHTML = `<tr><td colspan="4" class="empty-msg">Nenhuma conta vencendo nos próximos 15 dias.</td></tr>`;
-            return;
+        } else {
+            filtradas.forEach(conta => {
+                const linha = document.createElement('tr');
+                linha.innerHTML = `
+                    <td>${conta.vencimento.split('-').reverse().join('/')}</td>
+                    <td>${escapeHtml(conta.descricao)}</td>
+                    <td><input type="number" step="0.01" id="valor-conta-${conta.id}" value="${conta.valor}" style="margin-bottom:0; min-width:90px;"></td>
+                    <td><button class="btn-pagar" onclick="marcarComoPago('${conta.id}', '${conta.origem}')">Pago ✓</button></td>
+                `;
+                corpo.appendChild(linha);
+            });
         }
 
-        filtradas.forEach(conta => {
-            const linha = document.createElement('tr');
-            const acao = conta.origem === 'manual'
-                ? `<button class="btn-pagar" onclick="marcarComoPago('${conta.id}')">Já Paguei ✓</button>`
-                : `<span style="color:#a0aec0; font-size:0.85rem;">Lançamento</span>`;
-            linha.innerHTML = `
-                <td>${conta.vencimento.split('-').reverse().join('/')}</td>
-                <td>${escapeHtml(conta.descricao)}</td>
-                <td>R$ ${parseFloat(conta.valor).toFixed(2)}</td>
-                <td>${acao}</td>
-            `;
-            corpo.appendChild(linha);
-        });
+        const corpoPagas = document.getElementById('tabela-contas-pagas');
+        if (corpoPagas) {
+            const pagasManuais = contasPendentes.filter(c => c.pago && c.pago_em && c.pago_em.slice(0, 7) === mesAtual)
+                .map(c => ({ id: c.id, vencimento: c.vencimento, descricao: c.descricao, valor: valorPagoOuOriginal(c), pago_em: c.pago_em, origem: 'manual' }));
+            const pagasLancamentos = lancamentos.filter(l => l.pago && l.pago_em && l.pago_em.slice(0, 7) === mesAtual)
+                .map(l => ({ id: l.id, vencimento: l.data, descricao: l.categoria, valor: valorPagoOuOriginal(l), pago_em: l.pago_em, origem: 'lancamento' }));
+            const pagas = pagasManuais.concat(pagasLancamentos).sort((a, b) => b.pago_em.localeCompare(a.pago_em));
+            if (pagas.length === 0) {
+                corpoPagas.innerHTML = `<tr><td colspan="4" class="empty-msg">Nenhuma conta paga este mês ainda.</td></tr>`;
+            } else {
+                corpoPagas.innerHTML = '';
+                pagas.forEach(conta => {
+                    const linha = document.createElement('tr');
+                    linha.innerHTML = `
+                        <td>${conta.vencimento.split('-').reverse().join('/')}</td>
+                        <td>${escapeHtml(conta.descricao)}</td>
+                        <td>R$ ${parseFloat(conta.valor).toFixed(2)}</td>
+                        <td><button class="btn-acao" onclick="desfazerPagamento('${conta.id}', '${conta.origem}')">Desfazer ↩️</button></td>
+                    `;
+                    corpoPagas.appendChild(linha);
+                });
+            }
+        }
     }
 
     window.adicionarContaPendente = async function (event) {
@@ -1383,10 +1417,22 @@
         await carregarContasPendentes();
     };
 
-    window.marcarComoPago = async function (id) {
-        const { error } = await supabase.from('contas_pendentes').update({ pago: true, pago_em: new Date().toISOString() }).eq('id', id);
+    window.marcarComoPago = async function (id, origem) {
+        const inputValor = document.getElementById(`valor-conta-${id}`);
+        const valorPago = inputValor ? parseFloat(inputValor.value) : null;
+        if (inputValor && isNaN(valorPago)) { alert("Valor inválido."); return; }
+        const atualizacao = { pago: true, pago_em: new Date().toISOString(), valor_pago: valorPago };
+        const tabela = origem === 'lancamento' ? 'lancamentos' : 'contas_pendentes';
+        const { error } = await supabase.from(tabela).update(atualizacao).eq('id', id);
         if (error) { alert("Não foi possível atualizar agora. Tente novamente."); return; }
-        await carregarContasPendentes();
+        if (origem === 'lancamento') { await carregarLancamentos(); } else { await carregarContasPendentes(); }
+    };
+
+    window.desfazerPagamento = async function (id, origem) {
+        const tabela = origem === 'lancamento' ? 'lancamentos' : 'contas_pendentes';
+        const { error } = await supabase.from(tabela).update({ pago: false, pago_em: null, valor_pago: null }).eq('id', id);
+        if (error) { alert("Não foi possível desfazer agora. Tente novamente."); return; }
+        if (origem === 'lancamento') { await carregarLancamentos(); } else { await carregarContasPendentes(); }
     };
 
     // ---------------------------------------------------------------
