@@ -1922,7 +1922,7 @@
         const canvasEl = document.getElementById('graficoCategorias');
         if (!tabelaEl || !canvasEl) return;
 
-        const { linhas, mesLabel } = obterDadosRelatorioCategorias();
+        const { linhas } = obterDadosRelatorioCategorias();
 
         tabelaEl.innerHTML = '';
         if (linhas.length === 0) {
@@ -1940,28 +1940,27 @@
         }
 
         if (graficoCategorias) { graficoCategorias.destroy(); graficoCategorias = null; }
-        canvasEl.parentElement.style.height = '360px';
+        canvasEl.parentElement.style.height = Math.max(220, linhas.length * 34) + 'px';
         if (linhas.length === 0) return;
 
         const ctx = canvasEl.getContext('2d');
         graficoCategorias = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: [mesLabel],
-                datasets: linhas.map((l, i) => ({
-                    label: l.categoria,
-                    data: [l.total],
-                    backgroundColor: `hsl(${(i * 47) % 360}, 65%, 55%)`
-                }))
+                labels: linhas.map(l => l.categoria),
+                datasets: [{
+                    label: 'Total Gasto (R$)',
+                    data: linhas.map(l => l.total),
+                    backgroundColor: linhas.map((_, i) => `hsl(${(i * 47) % 360}, 65%, 55%)`),
+                    borderWidth: 1
+                }]
             },
             options: {
+                indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: true, position: 'bottom' } },
-                scales: {
-                    x: { stacked: true },
-                    y: { stacked: true, beginAtZero: true }
-                }
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true } }
             }
         });
     }
