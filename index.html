@@ -273,6 +273,7 @@
                     </table>
                     </div>
                     <div class="scroll-hint">⇠ arraste a tabela para o lado para ver mais ⇢</div>
+                    <form onsubmit="adicionarContaPendente(event)" style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:15px;"><div style="flex:2; min-width:160px;"><label>Conta / Descrição</label><input type="text" id="nova-conta-descricao" placeholder="Ex: Aluguel, Luz..." required style="margin-bottom:0;"></div><div style="flex:1; min-width:120px;"><label>Valor (R$)</label><input type="number" step="0.01" id="nova-conta-valor" placeholder="0.00" required style="margin-bottom:0;"></div><div style="flex:1; min-width:140px;"><label>Vencimento</label><input type="date" id="nova-conta-vencimento" required style="margin-bottom:0;"></div><button type="submit" class="btn-primary" style="width:auto; padding:10px 20px; margin-bottom:0;">Adicionar Conta</button></form>
                 </div>
 
                 <div class="filtro-mes-container">
@@ -842,6 +843,11 @@
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('app-screen').classList.remove('hidden');
         document.getElementById('user-greeting').innerText = `Logado como: ${usuario}`;
+        const inputData = document.getElementById('data');
+        if (inputData && !inputData.value) {
+            const hoje = new Date();
+            inputData.value = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, '0')}-${String(hoje.getDate()).padStart(2, '0')}`;
+        }
     }
 
     window.fazerLogout = function () {
@@ -906,7 +912,8 @@
     window.mudarMesOrcamento = function () {
         const mesSelecionado = document.getElementById('filtro-mes').value;
         const inputData = document.getElementById('data');
-        let diaAtual = "16";
+        const hoje = new Date();
+        let diaAtual = String(hoje.getDate()).padStart(2, '0');
         if (inputData.value) {
             const partes = inputData.value.split('-');
             if (partes.length === 3) diaAtual = partes[2];
@@ -1341,6 +1348,19 @@
             corpo.appendChild(linha);
         });
     }
+
+    window.adicionarContaPendente = async function (event) {
+        event.preventDefault();
+        const descricao = document.getElementById('nova-conta-descricao').value.trim();
+        const valorTexto = document.getElementById('nova-conta-valor').value;
+        const vencimento = document.getElementById('nova-conta-vencimento').value;
+        const valor = parseFloat(valorTexto);
+        if (!descricao || !vencimento || isNaN(valor)) return;
+        const { error } = await supabase.from('contas_pendentes').insert({ descricao, valor, vencimento });
+        if (error) { alert("Não foi possível adicionar a conta agora. Tente novamente."); return; }
+        event.target.reset();
+        await carregarContasPendentes();
+    };
 
     window.marcarComoPago = async function (id) {
         const { error } = await supabase.from('contas_pendentes').delete().eq('id', id);
