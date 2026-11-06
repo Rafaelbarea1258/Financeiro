@@ -1326,11 +1326,20 @@
         const hoje = new Date();
         const daqui15Dias = new Date();
         daqui15Dias.setDate(hoje.getDate() + 15);
+        const hojeISO = hoje.toISOString().split('T')[0];
 
-        let filtradas = contasPendentes.filter(conta => {
+        const contasManuais = contasPendentes.filter(conta => {
             const dataVenc = new Date(conta.vencimento + 'T00:00:00');
-            return dataVenc >= new Date(hoje.toISOString().split('T')[0] + 'T00:00:00') && dataVenc <= daqui15Dias;
-        });
+            return dataVenc >= new Date(hojeISO + 'T00:00:00') && dataVenc <= daqui15Dias;
+        }).map(conta => ({ id: conta.id, vencimento: conta.vencimento, descricao: conta.descricao, valor: conta.valor, origem: 'manual' }));
+
+        const contasLancamentos = lancamentos.filter(l => {
+            if (l.tipo !== 'Saída') return false;
+            const dataVenc = new Date(l.data + 'T00:00:00');
+            return dataVenc >= new Date(hojeISO + 'T00:00:00') && dataVenc <= daqui15Dias;
+        }).map(l => ({ id: l.id, vencimento: l.data, descricao: l.categoria, valor: l.valor, origem: 'lancamento' }));
+
+        let filtradas = contasManuais.concat(contasLancamentos).sort((a, b) => a.vencimento.localeCompare(b.vencimento));
 
         if (filtradas.length === 0) {
             corpo.innerHTML = `<tr><td colspan="4" class="empty-msg">Nenhuma conta vencendo nos próximos 15 dias.</td></tr>`;
@@ -1339,11 +1348,14 @@
 
         filtradas.forEach(conta => {
             const linha = document.createElement('tr');
+            const acao = conta.origem === 'manual'
+                ? `<button class="btn-pagar" onclick="marcarComoPago('${conta.id}')">Já Paguei ✓</button>`
+                : `<span style="color:#a0aec0; font-size:0.85rem;">Lançamento</span>`;
             linha.innerHTML = `
                 <td>${conta.vencimento.split('-').reverse().join('/')}</td>
                 <td>${escapeHtml(conta.descricao)}</td>
                 <td>R$ ${parseFloat(conta.valor).toFixed(2)}</td>
-                <td><button class="btn-pagar" onclick="marcarComoPago('${conta.id}')">Já Paguei ✓</button></td>
+                <td>${acao}</td>
             `;
             corpo.appendChild(linha);
         });
