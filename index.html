@@ -263,7 +263,7 @@
                 </div>
 
                 <div class="card" style="border-left: 4px solid #f39c12;">
-                    <h3>🔔 Contas a Vencer (Próximos 15 dias)</h3>
+                    <h3>🔔 Contas a Vencer (Próximos 15 dias)</h3><p style="margin:0 0 10px; font-size:0.9rem; color:#38a169;">Total pago este mês: <strong id="total-pago-contas">R$ 0.00</strong></p>
                     <div class="table-scroll">
                     <table>
                         <thead>
@@ -799,6 +799,7 @@
         if (error) throw error;
         lancamentos = data || [];
         atualizarTabela();
+        atualizarContasVencer();
         if (document.getElementById('tab-graficos').classList.contains('active')) {
             atualizarGraficoEEquilibrio();
         }
@@ -1328,7 +1329,15 @@
         daqui15Dias.setDate(hoje.getDate() + 15);
         const hojeISO = hoje.toISOString().split('T')[0];
 
+        const spanTotalPago = document.getElementById('total-pago-contas');
+        if (spanTotalPago) {
+            const mesAtual = hojeISO.slice(0, 7);
+            const totalPago = contasPendentes.filter(c => c.pago && c.pago_em && c.pago_em.slice(0, 7) === mesAtual).reduce((s, c) => s + (parseFloat(c.valor) || 0), 0);
+            spanTotalPago.innerText = `R$ ${totalPago.toFixed(2)}`;
+        }
+
         const contasManuais = contasPendentes.filter(conta => {
+            if (conta.pago) return false;
             const dataVenc = new Date(conta.vencimento + 'T00:00:00');
             return dataVenc >= new Date(hojeISO + 'T00:00:00') && dataVenc <= daqui15Dias;
         }).map(conta => ({ id: conta.id, vencimento: conta.vencimento, descricao: conta.descricao, valor: conta.valor, origem: 'manual' }));
@@ -1375,7 +1384,7 @@
     };
 
     window.marcarComoPago = async function (id) {
-        const { error } = await supabase.from('contas_pendentes').delete().eq('id', id);
+        const { error } = await supabase.from('contas_pendentes').update({ pago: true, pago_em: new Date().toISOString() }).eq('id', id);
         if (error) { alert("Não foi possível atualizar agora. Tente novamente."); return; }
         await carregarContasPendentes();
     };
